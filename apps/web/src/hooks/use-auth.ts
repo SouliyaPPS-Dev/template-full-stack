@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
-import { onAuthChange, getUser, type User } from "@/services/api";
+import { onAuthChange, getUser, type User, type UserType } from "@/services/api";
 
-export function useAuth(): User | null {
+export function useAuth(userType: UserType = "user"): User | null {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    setUser(getUser());
+    setUser(getUser(userType));
     const unsub = onAuthChange((u) => setUser(u));
     return unsub;
-  }, []);
+  }, [userType]);
 
   return user;
 }

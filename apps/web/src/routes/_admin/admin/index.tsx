@@ -24,8 +24,8 @@ interface Order {
 async function loader() {
   try {
     const [stats, orders] = await Promise.all([
-      api<DashboardStats>("/dashboard/stats"),
-      api<Order[]>("/orders"),
+      api<DashboardStats>("/dashboard/stats", undefined, "admin"),
+      api<Order[]>("/orders", undefined, "admin"),
     ]);
     return { stats, orders };
   } catch {

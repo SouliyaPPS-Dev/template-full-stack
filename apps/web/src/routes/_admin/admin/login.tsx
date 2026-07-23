@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { login, isAuthenticated, getUser } from "@/services/api";
+import { adminLogin, adminIsAuthenticated, getUser } from "@/services/api";
 
 function isClient(): boolean {
   return typeof window !== "undefined";
@@ -13,8 +13,8 @@ function isClient(): boolean {
 export const Route = createFileRoute("/_admin/admin/login")({
   beforeLoad: () => {
     if (!isClient()) return;
-    if (isAuthenticated()) {
-      const user = getUser();
+    if (adminIsAuthenticated()) {
+      const user = getUser("admin");
       if (user && (user.role === "admin" || user.role === "superadmin" || user.role === "staff")) {
         throw redirect({ to: "/admin" });
       }
@@ -35,7 +35,7 @@ function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const data = await login(email, password);
+      const data = await adminLogin(email, password);
       if (data.user.role !== "admin" && data.user.role !== "superadmin" && data.user.role !== "staff") {
         setError("Access denied. Admin only.");
         return;

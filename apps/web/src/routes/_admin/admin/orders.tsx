@@ -54,7 +54,7 @@ function AdminOrders() {
   const { orders: serverOrders } = Route.useLoaderData();
   const { data: clientOrders, isLoading } = useQuery({
     queryKey: ["admin-orders"],
-    queryFn: () => api<Order[]>("/orders"),
+    queryFn: () => api<Order[]>("/orders", undefined, "admin"),
   });
 
   const orders: Order[] = clientOrders || serverOrders;

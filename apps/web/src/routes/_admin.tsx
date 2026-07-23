@@ -1,6 +1,6 @@
 import { createFileRoute, redirect, Outlet, useLocation } from "@tanstack/react-router";
 import { AdminLayout } from "@/components/admin-layout";
-import { isAuthenticated, getUser } from "@/services/api";
+import { adminIsAuthenticated, getUser } from "@/services/api";
 import { useAuthMonitor } from "@/hooks/use-auth-monitor";
 
 function isClient(): boolean {
@@ -22,11 +22,11 @@ export const Route = createFileRoute("/_admin")({
     if (!isClient()) return;
     if (location.pathname === "/admin/login") return;
 
-    if (!isAuthenticated()) {
+    if (!adminIsAuthenticated()) {
       throw redirect({ to: "/admin/login" });
     }
 
-    const user = getUser();
+    const user = getUser("admin");
     if (user && user.role !== "admin" && user.role !== "superadmin" && user.role !== "staff") {
       throw redirect({ to: "/admin/login" });
     }

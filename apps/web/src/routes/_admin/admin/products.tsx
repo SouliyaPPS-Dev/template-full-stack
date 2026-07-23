@@ -38,7 +38,7 @@ function AdminProducts() {
   const { products: serverProducts } = Route.useLoaderData();
   const { data: clientProducts, isLoading } = useQuery({
     queryKey: ["admin-products"],
-    queryFn: () => api<Product[]>("/products"),
+    queryFn: () => api<Product[]>("/products", undefined, "admin"),
   });
 
   const products: Product[] = clientProducts || serverProducts;

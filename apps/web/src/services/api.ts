@@ -4,6 +4,8 @@ export function getApiBase(): string {
   return API_BASE;
 }
 
+export type UserType = "user" | "admin";
+
 export interface User {
   id: string;
   email: string;
@@ -24,6 +26,14 @@ function isClient(): boolean {
   return typeof window !== "undefined";
 }
 
+function tokenKey(type: UserType): string {
+  return type === "admin" ? "admin_token" : "user_token";
+}
+
+function userKey(type: UserType): string {
+  return type === "admin" ? "admin_user" : "user";
+}
+
 // ── Auth event system ──────────────────────────────────────────
 type AuthListener = (user: User | null) => void;
 const listeners = new Set<AuthListener>();
@@ -38,8 +48,8 @@ function emitAuthChange(user: User | null) {
 }
 // ───────────────────────────────────────────────────────────────
 
-export async function api<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = isClient() ? localStorage.getItem("token") : null;
+export async function api<T>(path: string, options?: RequestInit, userType: UserType = "user"): Promise<T> {
+  const token = isClient() ? localStorage.getItem(tokenKey(userType)) : null;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...((options?.headers as Record<string, string>) || {}),
@@ -52,8 +62,8 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (res.status === 401) {
     if (isClient()) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
+      localStorage.removeItem(tokenKey(userType));
+      localStorage.removeItem(userKey(userType));
       emitAuthChange(null);
     }
     throw new Error("Unauthorized");
@@ -73,8 +83,21 @@ export async function login(email: string, password: string): Promise<AuthRespon
     body: JSON.stringify({ email, password }),
   });
   if (isClient()) {
-    localStorage.setItem("token", data.access_token);
-    localStorage.setItem("user", JSON.stringify(data.user));
+    localStorage.setItem(tokenKey("user"), data.access_token);
+    localStorage.setItem(userKey("user"), JSON.stringify(data.user));
+    emitAuthChange(data.user);
+  }
+  return data;
+}
+
+export async function adminLogin(email: string, password: string): Promise<AuthResponse> {
+  const data = await api<AuthResponse>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+  if (isClient()) {
+    localStorage.setItem(tokenKey("admin"), data.access_token);
+    localStorage.setItem(userKey("admin"), JSON.stringify(data.user));
     emitAuthChange(data.user);
   }
   return data;
@@ -86,57 +109,69 @@ export async function register(email: string, password: string, fullName: string
     body: JSON.stringify({ email, password, full_name: fullName, phone }),
   });
   if (isClient()) {
-    localStorage.setItem("token", data.access_token);
-    localStorage.setItem("user", JSON.stringify(data.user));
+    localStorage.setItem(tokenKey("user"), data.access_token);
+    localStorage.setItem(userKey("user"), JSON.stringify(data.user));
     emitAuthChange(data.user);
   }
   return data;
 }
 
-export async function getMe(): Promise<User> {
-  return api<User>("/auth/me");
+export async function getMe(userType: UserType = "user"): Promise<User> {
+  return api<User>("/auth/me", undefined, userType);
 }
 
-export function logout() {
+export function logout(userType: UserType = "user") {
   if (isClient()) {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    localStorage.removeItem(tokenKey(userType));
+    localStorage.removeItem(userKey(userType));
     emitAuthChange(null);
   }
 }
 
-export function getUser(): User | null {
+export function adminLogout() {
+  logout("admin");
+}
+
+export function getUser(userType: UserType = "user"): User | null {
   if (!isClient()) return null;
-  const user = localStorage.getItem("user");
+  const user = localStorage.getItem(userKey(userType));
   return user ? JSON.parse(user) : null;
 }
 
-export function isAuthenticated(): boolean {
+function checkTokenValid(tokenKey_: string, userKey_: string): boolean {
   if (!isClient()) return false;
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem(tokenKey_);
   if (!token) return false;
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
     if (payload.exp && Date.now() >= payload.exp * 1000) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
+      localStorage.removeItem(tokenKey_);
+      localStorage.removeItem(userKey_);
       return false;
     }
   } catch {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    localStorage.removeItem(tokenKey_);
+    localStorage.removeItem(userKey_);
     return false;
   }
   return true;
+}
+
+export function isAuthenticated(userType: UserType = "user"): boolean {
+  return checkTokenValid(tokenKey(userType), userKey(userType));
+}
+
+export function adminIsAuthenticated(): boolean {
+  return checkTokenValid(tokenKey("admin"), userKey("admin"));
 }
 
 export async function updateProfile(data: { full_name?: string; phone?: string; avatar_url?: string }): Promise<User> {
   const updated = await api<User>("/auth/me", {
     method: "PUT",
     body: JSON.stringify(data),
-  });
+  }, "user");
   if (isClient()) {
-    localStorage.setItem("user", JSON.stringify(updated));
+    localStorage.setItem(userKey("user"), JSON.stringify(updated));
     emitAuthChange(updated);
   }
   return updated;

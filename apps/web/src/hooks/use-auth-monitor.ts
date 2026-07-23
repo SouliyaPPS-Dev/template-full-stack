@@ -7,7 +7,7 @@ function isClient(): boolean {
 
 function getToken(): string | null {
   if (!isClient()) return null;
-  return localStorage.getItem("token");
+  return localStorage.getItem("admin_token");
 }
 
 function isTokenExpired(token: string): boolean {
@@ -29,8 +29,8 @@ export function useAuthMonitor(redirectTo: string = "/admin/login") {
     function check() {
       const token = getToken();
       if (!token || isTokenExpired(token)) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+        localStorage.removeItem("admin_token");
+        localStorage.removeItem("admin_user");
         navigate({ to: redirectTo, replace: true });
       }
     }
@@ -40,7 +40,7 @@ export function useAuthMonitor(redirectTo: string = "/admin/login") {
 
     // Listen for localStorage changes (other tabs/windows)
     function onStorage(e: StorageEvent) {
-      if (e.key === "token") {
+      if (e.key === "admin_token") {
         check();
       }
     }

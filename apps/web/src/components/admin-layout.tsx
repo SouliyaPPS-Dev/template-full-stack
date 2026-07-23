@@ -1,7 +1,7 @@
 import { Link, useLocation, Outlet, useNavigate } from "@tanstack/react-router";
 import { LayoutDashboard, Package, ShoppingCart, Users, Settings, Store, LogOut, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { logout } from "@/services/api";
+import { adminLogout } from "@/services/api";
 import { useAuth } from "@/hooks/use-auth";
 
 const navItems = [
@@ -20,10 +20,10 @@ function isActive(pathname: string, path: string) {
 export function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const user = useAuth();
+  const user = useAuth("admin");
 
   function handleLogout() {
-    logout();
+    adminLogout();
     navigate({ to: "/admin/login", replace: true });
   }
 
