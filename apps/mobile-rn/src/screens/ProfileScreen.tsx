@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Platform,
 } from "react-native";
 import { useProfile, useUpdateProfile } from "../hooks/useQueries";
 import { User } from "../types";
@@ -17,7 +18,6 @@ import {
   BorderRadius,
   FontSize,
   Card,
-  Typography,
 } from "../theme";
 
 interface Props {
@@ -156,11 +156,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: Spacing.sm,
   },
-  avatarText: { fontSize: 32, fontWeight: "bold", color: Colors.primary },
-  userName: Typography.title,
+  avatarText: {
+    fontSize: 32,
+    fontWeight: Platform.OS === "android" ? "700" : "bold",
+    color: Colors.primary,
+  },
+  userName: {
+    fontSize: 22,
+    fontWeight: Platform.OS === "android" ? "700" : "bold",
+  },
   userEmail: { fontSize: FontSize.md, color: Colors.textSecondary, marginTop: Spacing.xs },
   card: Card,
-  cardTitle: { fontSize: FontSize.lg, fontWeight: "600", marginBottom: Spacing.md },
+  cardTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: Platform.OS === "android" ? "600" : "600",
+    marginBottom: Spacing.md,
+  },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -168,8 +179,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
   },
-  infoLabel: Typography.label,
-  infoValue: Typography.value,
+  infoLabel: { fontSize: FontSize.md, color: Colors.textSecondary },
+  infoValue: {
+    fontSize: FontSize.md,
+    fontWeight: Platform.OS === "android" ? "500" : "500",
+  },
   input: {
     borderWidth: 1,
     borderColor: Colors.border,
@@ -179,14 +193,18 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
     backgroundColor: Colors.white,
   },
-  success: { ...Typography.success, marginBottom: Spacing.sm },
+  success: { color: Colors.success, fontSize: FontSize.md, textAlign: "center", marginBottom: Spacing.sm },
   saveButton: {
     backgroundColor: Colors.primary,
     paddingVertical: 14,
     borderRadius: BorderRadius.sm,
     alignItems: "center",
   },
-  saveButtonText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: "600" },
+  saveButtonText: {
+    color: Colors.white,
+    fontSize: FontSize.lg,
+    fontWeight: Platform.OS === "android" ? "600" : "600",
+  },
   logoutButton: {
     marginHorizontal: Spacing.lg,
     marginTop: Spacing.sm,
@@ -196,5 +214,9 @@ const styles = StyleSheet.create({
     borderColor: Colors.error,
     alignItems: "center",
   },
-  logoutText: { color: Colors.error, fontSize: FontSize.lg, fontWeight: "600" },
+  logoutText: {
+    color: Colors.error,
+    fontSize: FontSize.lg,
+    fontWeight: Platform.OS === "android" ? "600" : "600",
+  },
 });

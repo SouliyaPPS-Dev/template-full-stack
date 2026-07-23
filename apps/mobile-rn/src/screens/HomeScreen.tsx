@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useCategories, useSettings } from "../hooks/useQueries";
@@ -15,7 +16,6 @@ import {
   Spacing,
   BorderRadius,
   FontSize,
-  Typography,
 } from "../theme";
 
 interface Props {
@@ -109,16 +109,25 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   content: { paddingBottom: 40 },
   hero: { alignItems: "center", paddingVertical: 32, paddingHorizontal: Spacing.xl },
-  heroTitle: Typography.heroTitle,
-  heroSubtitle: Typography.heroSubtitle,
-  heroButtons: { gap: Spacing.sm, width: "100%" },
+  heroTitle: {
+    fontSize: FontSize.hero,
+    fontWeight: Platform.OS === "android" ? "700" : "bold",
+    textAlign: "center",
+  },
+  heroSubtitle: { fontSize: FontSize.lg, color: Colors.textSecondary, textAlign: "center" },
+  heroButtons: { marginTop: Spacing.sm, width: "100%" },
   primaryButton: {
     backgroundColor: Colors.primary,
     paddingVertical: 14,
     borderRadius: BorderRadius.sm,
     alignItems: "center",
+    marginBottom: Spacing.sm,
   },
-  primaryButtonText: Typography.buttonText,
+  primaryButtonText: {
+    color: Colors.white,
+    fontSize: FontSize.lg,
+    fontWeight: Platform.OS === "android" ? "600" : "600",
+  },
   outlineButton: {
     borderWidth: 1,
     borderColor: Colors.primary,
@@ -126,10 +135,22 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
     alignItems: "center",
   },
-  outlineButtonText: { ...Typography.buttonText, color: Colors.primary },
+  outlineButtonText: {
+    color: Colors.primary,
+    fontSize: FontSize.lg,
+    fontWeight: Platform.OS === "android" ? "600" : "600",
+  },
   section: { paddingHorizontal: Spacing.xl, marginBottom: 24 },
-  sectionTitle: Typography.sectionTitle,
-  categoryGrid: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
+  sectionTitle: {
+    fontSize: FontSize.xxl,
+    fontWeight: Platform.OS === "android" ? "700" : "bold",
+    marginBottom: Spacing.md,
+  },
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginHorizontal: -Spacing.sm / 2,
+  },
   categoryCard: {
     backgroundColor: Colors.primaryBg,
     paddingHorizontal: Spacing.xl,
@@ -137,16 +158,17 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     minWidth: "45%",
     alignItems: "center",
+    margin: Spacing.sm / 2,
   },
-  categoryName: { fontSize: FontSize.md, fontWeight: "600", color: Colors.primary },
-  emptyText: Typography.emptyText,
+  categoryName: { fontSize: FontSize.md, fontWeight: Platform.OS === "android" ? "600" : "600", color: Colors.primary },
+  emptyText: { color: Colors.textMuted, textAlign: "center", marginTop: 20 },
   featureCard: {
     backgroundColor: Colors.cardBg,
     padding: Spacing.lg,
     borderRadius: BorderRadius.md,
     marginBottom: Spacing.sm,
   },
-  featureTitle: { fontSize: FontSize.lg, fontWeight: "600", marginBottom: Spacing.xs },
+  featureTitle: { fontSize: FontSize.lg, fontWeight: Platform.OS === "android" ? "600" : "600", marginBottom: Spacing.xs },
   featureDesc: { fontSize: FontSize.sm, color: Colors.textSecondary },
   logoutButton: {
     marginHorizontal: Spacing.xl,
@@ -156,5 +178,5 @@ const styles = StyleSheet.create({
     borderColor: Colors.error,
     alignItems: "center",
   },
-  logoutText: { color: Colors.error, fontSize: FontSize.lg, fontWeight: "600" },
+  logoutText: { color: Colors.error, fontSize: FontSize.lg, fontWeight: Platform.OS === "android" ? "600" : "600" },
 });

@@ -46,17 +46,13 @@ export const FontSize = {
   logo: 36,
 };
 
-const platformBold = Platform.select<TextStyle>({
-  ios: { fontWeight: "600" as TextStyle["fontWeight"] },
-  android: { fontWeight: "700" as TextStyle["fontWeight"] },
-  default: { fontWeight: "600" as TextStyle["fontWeight"] },
-});
+const fontWeightNormal = Platform.OS === "android" ? "400" : "normal";
+const fontWeightMedium = Platform.OS === "android" ? "500" : "500";
+const fontWeightSemibold = Platform.OS === "android" ? "600" : "600";
+const fontWeightBold = Platform.OS === "android" ? "700" : "bold";
 
-const platformBoldHeavy = Platform.select<TextStyle>({
-  ios: { fontWeight: "bold" as TextStyle["fontWeight"] },
-  android: { fontWeight: "700" as TextStyle["fontWeight"] },
-  default: { fontWeight: "bold" as TextStyle["fontWeight"] },
-});
+const platformBold: TextStyle = { fontWeight: fontWeightSemibold as TextStyle["fontWeight"] };
+const platformBoldHeavy: TextStyle = { fontWeight: fontWeightBold as TextStyle["fontWeight"] };
 
 export const Typography: Record<string, TextStyle> = {
   logo: { ...platformBoldHeavy, fontSize: FontSize.logo, color: Colors.primary },
@@ -89,10 +85,10 @@ export const CardShadow: ViewStyle = Platform.select({
     shadowRadius: 4,
   },
   android: {
-    elevation: 2,
+    elevation: 3,
   },
   default: {
-    elevation: 2,
+    elevation: 3,
   },
 }) as ViewStyle;
 

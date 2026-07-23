@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Platform,
 } from "react-native";
 import { useProducts } from "../hooks/useQueries";
 import ProductCard from "../components/ProductCard";
@@ -13,7 +14,6 @@ import { Product } from "../types";
 import {
   Colors,
   Spacing,
-  Typography,
 } from "../theme";
 
 export default function ProductsScreen() {
@@ -71,9 +71,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
   },
-  title: Typography.title,
-  count: Typography.small,
+  title: {
+    fontSize: 22,
+    fontWeight: Platform.OS === "android" ? "700" : "bold",
+  },
+  count: { fontSize: 14, color: Colors.textMuted },
   list: { padding: Spacing.lg },
   errorText: { color: Colors.error, fontSize: 16 },
-  emptyText: { ...Typography.emptyText, marginTop: 40 },
+  emptyText: { color: Colors.textMuted, textAlign: "center", marginTop: 40, fontSize: 16 },
 });

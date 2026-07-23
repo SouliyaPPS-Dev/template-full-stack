@@ -19,7 +19,7 @@ export default function ProductCard({ product, onAddToCart }: Props) {
     <View style={styles.card}>
       <View style={styles.imageContainer}>
         {product.images?.[0] ? (
-          <Image source={{ uri: product.images[0] }} style={styles.image} />
+          <Image source={{ uri: product.images[0] }} style={styles.image} resizeMode="cover" />
         ) : (
           <View style={styles.placeholder}>
             <Text style={styles.placeholderText}>No Image</Text>
@@ -72,7 +72,6 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
-    resizeMode: "cover",
   },
   placeholder: {
     flex: 1,
@@ -99,13 +98,13 @@ const styles = StyleSheet.create({
   priceRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: Spacing.sm,
     marginBottom: Spacing.xs,
   },
   price: {
     fontSize: FontSize.xl,
     fontWeight: Platform.OS === "android" ? "700" : "bold",
     color: Colors.primary,
+    marginRight: Spacing.sm,
   },
   comparePrice: {
     fontSize: FontSize.md,

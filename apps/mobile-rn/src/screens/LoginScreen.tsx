@@ -16,7 +16,6 @@ import {
   Spacing,
   BorderRadius,
   FontSize,
-  Typography,
 } from "../theme";
 
 interface Props {
@@ -133,8 +132,12 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scroll: { flexGrow: 1, justifyContent: "center", padding: Spacing.xxl },
   header: { alignItems: "center", marginBottom: 32 },
-  logo: Typography.logo,
-  subtitle: Typography.subtitle,
+  logo: {
+    fontSize: FontSize.logo,
+    fontWeight: Platform.OS === "android" ? "700" : "bold",
+    color: Colors.primary,
+  },
+  subtitle: { fontSize: FontSize.lg, color: Colors.textSecondary, marginTop: Spacing.sm },
   input: {
     borderWidth: 1,
     borderColor: Colors.border,
@@ -144,7 +147,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
     backgroundColor: Colors.cardBg,
   },
-  error: { ...Typography.error, marginBottom: Spacing.sm },
+  error: { color: Colors.error, fontSize: FontSize.md, marginBottom: Spacing.sm, textAlign: "center" },
   button: {
     backgroundColor: Colors.primary,
     borderRadius: BorderRadius.sm,
@@ -152,6 +155,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: Spacing.sm,
   },
-  buttonText: Typography.buttonText,
-  link: Typography.link,
+  buttonText: {
+    color: Colors.white,
+    fontSize: FontSize.lg,
+    fontWeight: Platform.OS === "android" ? "600" : "600",
+  },
+  link: { color: Colors.primary, textAlign: "center", marginTop: Spacing.lg, fontSize: FontSize.md },
 });
