@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart, Store, Tag, ArrowRight, User } from "lucide-react";
-import { isAuthenticated, getApiBase } from "@/services/api";
+import { getApiBase } from "@/services/api";
+import { useAuth } from "@/hooks/use-auth";
 
 interface Category {
   id: string;
@@ -31,9 +32,9 @@ export const Route = createFileRoute("/_user/")({
 
 function HomePage() {
   const { categories, settings } = Route.useLoaderData();
+  const user = useAuth();
 
   const storeName = settings?.find((s) => s.key === "store_name")?.value || "MyStore";
-  const loggedIn = isAuthenticated();
 
   return (
     <div className="flex flex-col gap-12 md:gap-16 py-4 md:py-8">
@@ -52,7 +53,7 @@ function HomePage() {
               Browse Products
             </Link>
           </Button>
-          {loggedIn ? (
+          {user ? (
             <Button asChild variant="outline" size="lg">
               <Link to="/profile">
                 <User className="mr-2 h-5 w-5" />

@@ -1,12 +1,13 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { User, Mail, Calendar, Shield, Save, ArrowLeft } from "lucide-react";
-import { getUser, updateProfile, isAuthenticated, getApiBase } from "@/services/api";
+import { updateProfile, isAuthenticated, getApiBase } from "@/services/api";
+import { useAuth } from "@/hooks/use-auth";
 
 function isClient(): boolean {
   return typeof window !== "undefined";
@@ -38,12 +39,28 @@ export const Route = createFileRoute("/_user/profile")({
 function ProfilePage() {
   const queryClient = useQueryClient();
   const { user: serverUser } = Route.useLoaderData();
-  const storedUser = serverUser || getUser();
+  const authUser = useAuth();
+  const storedUser = serverUser || authUser;
 
   const [fullName, setFullName] = useState(storedUser?.full_name || "");
   const [phone, setPhone] = useState(storedUser?.phone || "");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [mounted, setMounted] = useState(false);
+  const [formattedDate, setFormattedDate] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+    if (storedUser?.created_at) {
+      setFormattedDate(
+        new Date(storedUser.created_at).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      );
+    }
+  }, [storedUser?.created_at]);
 
   const mutation = useMutation({
     mutationFn: () => updateProfile({ full_name: fullName, phone }),
@@ -112,11 +129,7 @@ function ProfilePage() {
             <div>
               <p className="text-xs text-muted-foreground">Member Since</p>
               <p className="text-sm">
-                {new Date(storedUser.created_at).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
+                {mounted ? formattedDate : "\u00A0"}
               </p>
             </div>
           </div>
