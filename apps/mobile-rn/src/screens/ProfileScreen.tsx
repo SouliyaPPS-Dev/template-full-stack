@@ -11,6 +11,14 @@ import {
 } from "react-native";
 import { useProfile, useUpdateProfile } from "../hooks/useQueries";
 import { User } from "../types";
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  Card,
+  Typography,
+} from "../theme";
 
 interface Props {
   user: User | null;
@@ -55,7 +63,7 @@ export default function ProfileScreen({ user, onLogout }: Props) {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
@@ -101,12 +109,14 @@ export default function ProfileScreen({ user, onLogout }: Props) {
           value={fullName}
           onChangeText={setFullName}
           placeholder="Full Name"
+          placeholderTextColor={Colors.placeholder}
         />
         <TextInput
           style={styles.input}
           value={phone}
           onChangeText={setPhone}
           placeholder="Phone"
+          placeholderTextColor={Colors.placeholder}
           keyboardType="phone-pad"
         />
 
@@ -118,7 +128,7 @@ export default function ProfileScreen({ user, onLogout }: Props) {
           disabled={updateProfile.isPending}
         >
           {updateProfile.isPending ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={Colors.white} />
           ) : (
             <Text style={styles.saveButtonText}>Save Changes</Text>
           )}
@@ -133,7 +143,7 @@ export default function ProfileScreen({ user, onLogout }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1, backgroundColor: Colors.background },
   content: { paddingBottom: 40 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   avatarSection: { alignItems: "center", paddingVertical: 24 },
@@ -141,56 +151,50 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#e0e7ff",
+    backgroundColor: Colors.primaryLight,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: Spacing.sm,
   },
-  avatarText: { fontSize: 32, fontWeight: "bold", color: "#2563eb" },
-  userName: { fontSize: 22, fontWeight: "bold" },
-  userEmail: { fontSize: 14, color: "#666", marginTop: 4 },
-  card: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: "#fafafa",
-    borderRadius: 12,
-    padding: 16,
-  },
-  cardTitle: { fontSize: 16, fontWeight: "600", marginBottom: 12 },
+  avatarText: { fontSize: 32, fontWeight: "bold", color: Colors.primary },
+  userName: Typography.title,
+  userEmail: { fontSize: FontSize.md, color: Colors.textSecondary, marginTop: Spacing.xs },
+  card: Card,
+  cardTitle: { fontSize: FontSize.lg, fontWeight: "600", marginBottom: Spacing.md },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 8,
+    paddingVertical: Spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: Colors.borderLight,
   },
-  infoLabel: { fontSize: 14, color: "#666" },
-  infoValue: { fontSize: 14, fontWeight: "500" },
+  infoLabel: Typography.label,
+  infoValue: Typography.value,
   input: {
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 12,
-    backgroundColor: "#fff",
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.md,
+    fontSize: FontSize.lg,
+    marginBottom: Spacing.md,
+    backgroundColor: Colors.white,
   },
-  success: { color: "#16a34a", fontSize: 14, textAlign: "center", marginBottom: 8 },
+  success: { ...Typography.success, marginBottom: Spacing.sm },
   saveButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: Colors.primary,
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: BorderRadius.sm,
     alignItems: "center",
   },
-  saveButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  saveButtonText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: "600" },
   logoutButton: {
-    marginHorizontal: 16,
-    marginTop: 8,
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.sm,
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: BorderRadius.sm,
     borderWidth: 1,
-    borderColor: "#dc2626",
+    borderColor: Colors.error,
     alignItems: "center",
   },
-  logoutText: { color: "#dc2626", fontSize: 16, fontWeight: "600" },
+  logoutText: { color: Colors.error, fontSize: FontSize.lg, fontWeight: "600" },
 });

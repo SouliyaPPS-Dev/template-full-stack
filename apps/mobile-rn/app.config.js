@@ -1,10 +1,8 @@
-require("dotenv/config");
-
 module.exports = ({ config }) => ({
   ...config,
   extra: {
     ...config.extra,
-    apiUrl: process.env.API_URL || "http://localhost:8080/api/v1",
-    appName: process.env.APP_NAME || "MyStore",
+    apiUrl: process.env.API_URL || config.extra?.apiUrl || "http://10.30.242.232:8080/api/v1",
+    appName: process.env.APP_NAME || config.extra?.appName || "MyStore",
   },
 });

@@ -10,6 +10,11 @@ import {
 import { useProducts } from "../hooks/useQueries";
 import ProductCard from "../components/ProductCard";
 import { Product } from "../types";
+import {
+  Colors,
+  Spacing,
+  Typography,
+} from "../theme";
 
 export default function ProductsScreen() {
   const { data: products, isLoading, error } = useProducts();
@@ -21,7 +26,7 @@ export default function ProductsScreen() {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
@@ -56,19 +61,19 @@ export default function ProductsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1, backgroundColor: Colors.background },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    padding: Spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: Colors.borderLight,
   },
-  title: { fontSize: 22, fontWeight: "bold" },
-  count: { fontSize: 14, color: "#999" },
-  list: { padding: 16 },
-  errorText: { color: "#dc2626", fontSize: 16 },
-  emptyText: { color: "#999", textAlign: "center", marginTop: 40, fontSize: 16 },
+  title: Typography.title,
+  count: Typography.small,
+  list: { padding: Spacing.lg },
+  errorText: { color: Colors.error, fontSize: 16 },
+  emptyText: { ...Typography.emptyText, marginTop: 40 },
 });

@@ -11,6 +11,13 @@ import {
   ScrollView,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  Typography,
+} from "../theme";
 
 interface Props {
   onLogin: (email: string, password: string) => Promise<any>;
@@ -62,6 +69,7 @@ export default function LoginScreen({ onLogin, onRegister }: Props) {
             <TextInput
               style={styles.input}
               placeholder="Full Name"
+              placeholderTextColor={Colors.placeholder}
               value={fullName}
               onChangeText={setFullName}
               autoCapitalize="words"
@@ -69,6 +77,7 @@ export default function LoginScreen({ onLogin, onRegister }: Props) {
             <TextInput
               style={styles.input}
               placeholder="Phone (optional)"
+              placeholderTextColor={Colors.placeholder}
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
@@ -79,6 +88,7 @@ export default function LoginScreen({ onLogin, onRegister }: Props) {
         <TextInput
           style={styles.input}
           placeholder="Email"
+          placeholderTextColor={Colors.placeholder}
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -87,6 +97,7 @@ export default function LoginScreen({ onLogin, onRegister }: Props) {
         <TextInput
           style={styles.input}
           placeholder="Password"
+          placeholderTextColor={Colors.placeholder}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -100,7 +111,7 @@ export default function LoginScreen({ onLogin, onRegister }: Props) {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={Colors.white} />
           ) : (
             <Text style={styles.buttonText}>
               {isSignUp ? "Create Account" : "Sign In"}
@@ -119,28 +130,28 @@ export default function LoginScreen({ onLogin, onRegister }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  scroll: { flexGrow: 1, justifyContent: "center", padding: 24 },
+  container: { flex: 1, backgroundColor: Colors.background },
+  scroll: { flexGrow: 1, justifyContent: "center", padding: Spacing.xxl },
   header: { alignItems: "center", marginBottom: 32 },
-  logo: { fontSize: 36, fontWeight: "bold", color: "#2563eb" },
-  subtitle: { fontSize: 16, color: "#666", marginTop: 8 },
+  logo: Typography.logo,
+  subtitle: Typography.subtitle,
   input: {
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.sm,
     padding: 14,
-    fontSize: 16,
-    marginBottom: 12,
-    backgroundColor: "#fafafa",
+    fontSize: FontSize.lg,
+    marginBottom: Spacing.md,
+    backgroundColor: Colors.cardBg,
   },
-  error: { color: "#dc2626", fontSize: 14, marginBottom: 8, textAlign: "center" },
+  error: { ...Typography.error, marginBottom: Spacing.sm },
   button: {
-    backgroundColor: "#2563eb",
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: Colors.primary,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.lg,
     alignItems: "center",
-    marginTop: 8,
+    marginTop: Spacing.sm,
   },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  link: { color: "#2563eb", textAlign: "center", marginTop: 16, fontSize: 14 },
+  buttonText: Typography.buttonText,
+  link: Typography.link,
 });

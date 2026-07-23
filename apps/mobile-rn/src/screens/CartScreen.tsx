@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { Colors, FontSize, Typography } from "../theme";
 
 export default function CartScreen() {
   return (
@@ -14,6 +15,6 @@ export default function CartScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
   icon: { fontSize: 64, marginBottom: 16 },
-  title: { fontSize: 20, fontWeight: "bold", marginBottom: 8 },
-  subtitle: { fontSize: 14, color: "#666", textAlign: "center" },
+  title: { fontSize: FontSize.xxl, fontWeight: "bold", marginBottom: 8 },
+  subtitle: { ...Typography.bodySecondary, textAlign: "center" },
 });

@@ -25,6 +25,7 @@ import HomeScreen from "./screens/HomeScreen";
 import ProductsScreen from "./screens/ProductsScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import CartScreen from "./screens/CartScreen";
+import { Colors } from "./theme";
 
 const Stack = createNativeStackNavigator();
 const queryClient = new QueryClient();
@@ -120,7 +121,7 @@ function RootNavigator() {
   if (loading) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
@@ -130,8 +131,8 @@ function RootNavigator() {
       <Stack.Navigator
         initialRouteName={user ? "Home" : "Login"}
         screenOptions={{
-          headerStyle: { backgroundColor: "#2563eb" },
-          headerTintColor: "#fff",
+          headerStyle: { backgroundColor: Colors.primary },
+          headerTintColor: Colors.white,
         }}
       >
         <Stack.Screen name="Login" options={{ headerShown: false }}>
@@ -182,6 +183,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: Colors.background,
   },
 });

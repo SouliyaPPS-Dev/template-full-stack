@@ -1,6 +1,13 @@
 import React from "react";
-import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, Image, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { Product } from "../types";
+import {
+  Colors,
+  Spacing,
+  BorderRadius,
+  FontSize,
+  CardShadow,
+} from "../theme";
 
 interface Props {
   product: Product;
@@ -51,11 +58,10 @@ export default function ProductCard({ product, onAddToCart }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    marginBottom: 12,
-    boxShadow: "0 2px 4px rgba(0,0,0,0.08)",
-    elevation: 2,
+    backgroundColor: Colors.white,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.md,
+    ...CardShadow,
     overflow: "hidden",
   },
   imageContainer: {
@@ -74,55 +80,55 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   placeholderText: {
-    color: "#999",
-    fontSize: 14,
+    color: Colors.textMuted,
+    fontSize: FontSize.md,
   },
   info: {
-    padding: 12,
+    padding: Spacing.md,
   },
   name: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 4,
+    fontSize: FontSize.lg,
+    fontWeight: Platform.OS === "android" ? "700" : "600",
+    marginBottom: Spacing.xs,
   },
   sku: {
-    fontSize: 12,
-    color: "#999",
-    marginBottom: 8,
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginBottom: Spacing.sm,
   },
   priceRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 4,
+    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   price: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#2563eb",
+    fontSize: FontSize.xl,
+    fontWeight: Platform.OS === "android" ? "700" : "bold",
+    color: Colors.primary,
   },
   comparePrice: {
-    fontSize: 14,
-    color: "#999",
+    fontSize: FontSize.md,
+    color: Colors.textMuted,
     textDecorationLine: "line-through",
   },
   stock: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 8,
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.sm,
   },
   cartButton: {
-    backgroundColor: "#2563eb",
+    backgroundColor: Colors.primary,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: BorderRadius.sm,
     alignItems: "center",
   },
   cartButtonDisabled: {
-    backgroundColor: "#ccc",
+    backgroundColor: Colors.disabled,
   },
   cartButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
+    color: Colors.white,
+    fontSize: FontSize.md,
+    fontWeight: Platform.OS === "android" ? "700" : "600",
   },
 });
