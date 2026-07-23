@@ -1,0 +1,27 @@
+{
+  "lastSync": "2026-07-21T13:00:00",
+  "source": "AGENTS.md + Full-Stack Implementation",
+  "contentHash": "acd1939e243e4f2ca5906c5653d14589",
+  "syncedAt": "2026-07-21T13:00:00",
+  "status": "all_synced",
+  "implementation": {
+    "totalFiles": 71,
+    "apps": {
+      "web-user": "TanStack Start SSR — 11 files",
+      "web-admin": "React admin dashboard — 9 files",
+      "mobile-flutter": "Flutter app — 8 files",
+      "mobile-rn": "React Native app — 7 files"
+    },
+    "services": {
+      "api-gateway": "Go Chi router — 8 files",
+      "auth-service": "Python FastAPI — 6 files",
+      "data-service": "Rust Axum — 7 files"
+    },
+    "packages": {
+      "shared": "Types + Validators + Constants — 3 files",
+      "config": "App config — 2 files"
+    },
+    "database": "PostgreSQL schema — 1 file (22 tables)",
+    "infra": "Docker + K8s + Terraform — 5 files"
+  }
+}

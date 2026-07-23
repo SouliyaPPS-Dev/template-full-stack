@@ -1,0 +1,133 @@
+#!/bin/bash
+set -e
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+PID="$DIR/.api.pid"
+AIR_PID="$DIR/.air.pid"
+LOG="$DIR/.api.log"
+
+G='\033[0;32m'
+Y='\033[1;33m'
+R='\033[0;31m'
+NC='\033[0m'
+
+running() {
+  [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null
+}
+
+air_running() {
+  [ -f "$AIR_PID" ] && kill -0 "$(cat "$AIR_PID")" 2>/dev/null
+}
+
+start_api() {
+  running && echo -e "${Y}API already running ($(cat $PID))${NC}" && return 0
+  if command -v air >/dev/null 2>&1 || [ -x "$HOME/go/bin/air" ]; then
+    echo -e "${G}Starting Go API with air (hot-reload on :8080)...${NC}"
+    cd "$DIR/services/api-gateway"
+    air > "$LOG" 2>&1 &
+    echo $! > "$AIR_PID"
+    sleep 3
+    air_running && echo -e "${G}API air process running ($(cat $AIR_PID))${NC}" || { echo -e "${R}Failed. tail $LOG${NC}"; exit 1; }
+  else
+    echo -e "${Y}air not found, falling back to go run...${NC}"
+    echo -e "${G}Starting Go API on :8080...${NC}"
+    cd "$DIR/services/api-gateway"
+    go run ./cmd/... > "$LOG" 2>&1 &
+    echo $! > "$PID"
+    sleep 2
+    running && echo -e "${G}API running ($(cat $PID))${NC}" || { echo -e "${R}Failed. tail $LOG${NC}"; exit 1; }
+  fi
+}
+
+stop_api() {
+  local stopped=0
+  if air_running; then
+    kill "$(cat "$AIR_PID")" 2>/dev/null; rm -f "$AIR_PID"
+    echo -e "${G}Air stopped${NC}"
+    stopped=1
+  fi
+  if running; then
+    kill "$(cat "$PID")" 2>/dev/null; rm -f "$PID"
+    echo -e "${G}API stopped${NC}"
+    stopped=1
+  fi
+  [ $stopped -eq 0 ] && echo "Not running."
+}
+
+case "$1" in
+  api)
+    case "$2" in
+      stop)
+        stop_api
+        ;;
+      status)
+        if air_running; then
+          echo -e "${G}API: on via air ($(cat $AIR_PID))${NC}"
+        elif running; then
+          echo -e "${G}API: on ($(cat $PID))${NC}"
+        else
+          echo -e "${R}API: off${NC}"
+        fi
+        ;;
+      *)
+        start_api
+        ;;
+    esac
+    ;;
+  web)
+    case "$2" in
+      build)
+        echo -e "${G}Building Web for production...${NC}"
+        cd "$DIR/apps/web" && npx vite build
+        echo -e "${G}Build complete → apps/web/dist/${NC}"
+        ;;
+      *)
+        start_api
+        echo -e "${G}Starting Web (port 3000)...${NC}"
+        cd "$DIR/apps/web" && npx vite --port 3000
+        ;;
+    esac
+    ;;
+  flutter)
+    echo -e "${G}Starting Flutter...${NC}"
+    cd "$DIR/apps/mobile-flutter" && flutter pub get && flutter run
+    ;;
+  rn)
+    start_api
+    echo -e "${G}Starting React Native...${NC}"
+    cd "$DIR/apps/mobile-rn" && bun start
+    ;;
+  all)
+    start_api
+    echo ""
+    echo "Open separate terminals for:"
+    echo "  ./run web      # Web (port 3000)"
+    echo "  ./run rn       # React Native"
+    echo "  ./run flutter  # Flutter"
+    ;;
+  stop)
+    stop_api
+    ;;
+  *)
+    echo ""
+    echo -e "${G}Full-Stack Dev Runner${NC}"
+    echo ""
+    echo "Usage: ./run <command>"
+    echo ""
+    echo "  ./run api          Start Go API with air (hot-reload :8080)"
+    echo "  ./run api stop     Stop Go API"
+    echo "  ./run api status   Check API status"
+    echo ""
+    echo "  ./run web          API + Web dev server (port 3000)"
+    echo "  ./run web build    Build web for production"
+    echo "  ./run rn           React Native"
+    echo "  ./run flutter      Flutter"
+    echo ""
+    echo "  ./run all          Start API + instructions"
+    echo "  ./run stop         Stop all background services"
+    echo ""
+    echo "Admin panel: http://localhost:3000/admin"
+    echo "Admin login: admin@mystore.com / admin123"
+    echo ""
+    ;;
+esac

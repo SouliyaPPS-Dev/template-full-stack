@@ -1,0 +1,23 @@
+{
+  "name": "fullstack-template",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "./run api",
+    "dev:api": "./run api",
+    "dev:api:stop": "./run api stop",
+    "dev:api:status": "./run api status",
+    "dev:web": "./run web",
+    "dev:admin": "./run admin",
+    "dev:flutter": "./run flutter",
+    "dev:rn": "./run rn",
+    "stop": "./run stop",
+    "build": "bun run build:web && bun run build:admin",
+    "build:web": "cd apps/web-user && bun run build",
+    "build:admin": "cd apps/web-admin && bun run build",
+    "test": "bun test --recursive",
+    "db:setup": "psql -U app_user -d app_main -f database/schema.sql",
+    "docker:up": "docker-compose -f infra/docker/docker-compose.yml up -d",
+    "docker:down": "docker-compose -f infra/docker/docker-compose.yml down"
+  }
+}

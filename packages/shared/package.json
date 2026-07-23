@@ -1,0 +1,15 @@
+{
+  "name": "@shared/types",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts",
+    "./types": "./types/index.ts",
+    "./validators": "./validators/index.ts",
+    "./constants": "./constants/index.ts"
+  },
+  "dependencies": {
+    "zod": "^3.25.0"
+  }
+}

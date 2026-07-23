@@ -1,0 +1,116 @@
+{
+  "lastSync": "2026-07-21T12:00:00",
+  "source": "AGENTS.md",
+  "syncTargets": {
+    "obsidian": "/Users/souliyapps/Downloads/obsidian/OpenCode/",
+    "opencode": ".opencode/memory/",
+    "hermes": ".opencode/memory/hermes-context.json"
+  },
+  "project": "full-stack-template",
+  "database": {
+    "fullstack": {
+      "engine": "PostgreSQL 16+",
+      "connection": "localhost:5432 / app_main / app_user",
+      "tables": [
+        "users", "user_roles", "user_sessions",
+        "categories", "products", "product_images",
+        "orders", "order_items", "cart_items",
+        "quotations", "quotation_items", "quotation_history",
+        "inquiries", "inquiry_messages",
+        "favorites", "expenses", "expense_categories",
+        "notifications", "audit_logs", "system_settings",
+        "banners", "promotions"
+      ],
+      "tableCount": 22,
+      "patterns": {
+        "ids": "UUID (uuid_generate_v4())",
+        "timestamps": "TIMESTAMPTZ DEFAULT NOW()",
+        "softDelete": "deleted_at TIMESTAMPTZ",
+        "json": "JSONB (indexed)",
+        "enums": "CHECK (col IN (...))",
+        "timezone": "UTC",
+        "encoding": "UTF-8 native",
+        "foreignKeys": "All tables with ON DELETE CASCADE/SET NULL"
+      }
+    },
+    "phpReference": {
+      "engine": "MySQL 8.0",
+      "connection": "PDO Singleton via Database::pdo()",
+      "local": "localhost:3306 / root / Admin123",
+      "production": "sql*.infinityfree.com / if0_*",
+      "timezone": "+07:00 (Indochina)",
+      "encoding": "utf8mb4_unicode_ci",
+      "projects": {
+        "land-houses-dev": {
+          "db": "if0_41833855_landhouse",
+          "purpose": "Real estate listing (Laos)",
+          "pattern": "Custom MVC, UUID PKs, JSON, i18n",
+          "tables": 10
+        },
+        "thiengtham-dev": {
+          "db": "if0_42353445_thiengtham",
+          "purpose": "POS + E-commerce",
+          "pattern": "Custom MVC, INT PKs, full POS+ecom",
+          "tables": 20
+        },
+        "rent-miss-clean-dev": {
+          "db": "if0_41710498_rent",
+          "purpose": "Rental POS",
+          "pattern": "Custom MVC, INT PKs, rental workflow",
+          "tables": 11
+        },
+        "phonhong-dev": {
+          "db": "if0_41710498_phonhong",
+          "purpose": "Legacy POS (CodeIgniter)",
+          "pattern": "CodeIgniter 3, 80+ tables",
+          "tables": 80
+        },
+        "viengchalern-dev": {
+          "db": "if0_41710498_viengchalern",
+          "purpose": "Legacy POS (CodeIgniter)",
+          "pattern": "CodeIgniter 3, 80+ tables",
+          "tables": 80
+        },
+        "buddhaword": {
+          "db": "MySQL + SQLite",
+          "purpose": "Buddhist scripture search",
+          "pattern": "Custom MVC, Google Sheets API"
+        },
+        "logistics": {
+          "db": "None",
+          "purpose": "Shipping cost estimator",
+          "pattern": "React SPA + Express.js"
+        }
+      }
+    }
+  },
+  "techStack": {
+    "runtime": "Bun 1.x+ (JS/TS runtime, package manager, bundler, test runner)",
+    "frontend": ["React 19+ TypeScript", "TanStack Router", "TanStack Query", "TanStack Table", "shadcn/ui"],
+    "mobile": ["Flutter 3.x (Dart)", "React Native 0.76+ (TypeScript)"],
+    "backend": ["Go 1.22+ (Chi/Fiber)", "Python 3.12+ (FastAPI)", "Rust (Axum/Actix)"],
+    "database": ["PostgreSQL 16+", "MySQL 8.0", "Redis", "MongoDB (optional)"],
+    "infrastructure": ["Docker", "Kubernetes", "Terraform", "AWS/GCP/Azure"]
+  },
+  "devCommands": {
+    "script": "./dev.sh",
+    "s": "./dev.sh s — Start API background",
+    "x": "./dev.sh x — Stop API",
+    "st": "./dev.sh st — API status",
+    "w": "./dev.sh w — Web user (port 3000)",
+    "a": "./dev.sh a — Web admin (port 3001)",
+    "r": "./dev.sh r — React Native",
+    "f": "./dev.sh f — Flutter",
+    "d": "./dev.sh d — API + instructions"
+  },
+  "codeStandards": {
+    "typescript": "Strict mode, functional components, TanStack Query, Zod validation",
+    "go": "Effective Go, context for request-scoped values, error wrapping",
+    "python": "Type hints, PEP 8, async/await, FastAPI DI",
+    "rust": "rustfmt, Result<T,E>, iterators",
+    "flutter": "Dart style guide, null safety, Riverpod/Bloc",
+    "php": "PDO Singleton, UUID/INT PKs, bcrypt, .env config, Tailwind+Alpine"
+  },
+  "xampPath": "/Applications/XAMPP/xamppfiles/htdocs/",
+  "obsidianVault": "/Users/souliyapps/Downloads/obsidian/OpenCode/"
+}

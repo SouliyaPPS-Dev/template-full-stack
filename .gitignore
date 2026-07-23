@@ -1,0 +1,8 @@
+.api.pid
+.api.log
+node_modules/
+dist/
+.turbo/
+*.log
+.env
+.env.local
