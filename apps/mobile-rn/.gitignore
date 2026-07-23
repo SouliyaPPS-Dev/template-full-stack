@@ -1,5 +1,0 @@
-.env
-builds/
-android/
-ios/
-*.xcarchive
