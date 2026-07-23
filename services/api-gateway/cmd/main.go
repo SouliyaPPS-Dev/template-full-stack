@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
 
 	"github.com/myorg/api-gateway/internal/config"
 	"github.com/myorg/api-gateway/internal/database"
@@ -32,13 +31,23 @@ func main() {
 	r.Use(chimiddleware.RealIP)
 	r.Use(chimiddleware.RequestID)
 	r.Use(middleware.SecurityHeaders)
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   cfg.CORSOrigins,
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
-		AllowCredentials: true,
-		MaxAge:           300,
-	}))
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := r.Header.Get("Origin")
+			if origin != "" {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+				w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type")
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+				w.Header().Set("Access-Control-Max-Age", "300")
+			}
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	})
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -82,6 +91,10 @@ func main() {
 			r.With(middleware.AdminOnly).Put("/orders/{id}", handlers.UpdateOrder)
 
 			r.With(middleware.AdminOnly).Get("/users", handlers.ListUsers)
+			r.With(middleware.AdminOnly).Post("/users", handlers.CreateUser)
+			r.With(middleware.AdminOnly).Get("/users/{id}", handlers.GetUser)
+			r.With(middleware.AdminOnly).Put("/users/{id}", handlers.UpdateUser)
+			r.With(middleware.AdminOnly).Delete("/users/{id}", handlers.DeleteUser)
 
 			r.Get("/quotations", handlers.ListQuotations)
 			r.Post("/quotations", handlers.CreateQuotation)

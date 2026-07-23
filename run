@@ -21,6 +21,9 @@ air_running() {
 
 start_api() {
   running && echo -e "${Y}API already running ($(cat $PID))${NC}" && return 0
+  if [ -f "$DIR/services/api-gateway/.env" ]; then
+    set -a; source "$DIR/services/api-gateway/.env"; set +a
+  fi
   if command -v air >/dev/null 2>&1 || [ -x "$HOME/go/bin/air" ]; then
     echo -e "${G}Starting Go API with air (hot-reload on :8080)...${NC}"
     cd "$DIR/services/api-gateway"
@@ -92,18 +95,57 @@ case "$1" in
     echo -e "${G}Starting Flutter...${NC}"
     cd "$DIR/apps/mobile-flutter" && flutter pub get && flutter run
     ;;
-  rn)
-    start_api
-    echo -e "${G}Starting React Native...${NC}"
-    cd "$DIR/apps/mobile-rn" && bun start
+  rn|mobile-rn)
+    case "$2" in
+      apk)
+        echo -e "${G}Building Android APK (local)...${NC}"
+        cd "$DIR/apps/mobile-rn" && bash scripts/build.sh apk
+        ;;
+      aab|appbundle)
+        echo -e "${G}Building Android App Bundle (local)...${NC}"
+        cd "$DIR/apps/mobile-rn" && bash scripts/build.sh aab
+        ;;
+      ios)
+        echo -e "${G}Building iOS .app for simulator (local, no signing)...${NC}"
+        cd "$DIR/apps/mobile-rn" && bash scripts/build.sh ios
+        ;;
+      ipa)
+        echo -e "${G}Building iOS IPA (local, requires signing)...${NC}"
+        cd "$DIR/apps/mobile-rn" && bash scripts/build.sh ipa
+        ;;
+      build)
+        echo -e "${G}Building all platforms (local)...${NC}"
+        cd "$DIR/apps/mobile-rn" && bash scripts/build.sh all
+        ;;
+      eas-apk)
+        echo -e "${G}Building Android APK (EAS cloud)...${NC}"
+        cd "$DIR/apps/mobile-rn" && eas build --platform android --profile apk --non-interactive
+        ;;
+      eas-appbundle)
+        echo -e "${G}Building Android App Bundle (EAS cloud)...${NC}"
+        cd "$DIR/apps/mobile-rn" && eas build --platform android --profile appbundle --non-interactive
+        ;;
+      eas-ipa)
+        echo -e "${G}Building iOS IPA (EAS cloud)...${NC}"
+        cd "$DIR/apps/mobile-rn" && eas build --platform ios --profile ipa --non-interactive
+        ;;
+      login)
+        cd "$DIR/apps/mobile-rn" && eas login
+        ;;
+      *)
+        start_api
+        echo -e "${G}Starting React Native (Expo)...${NC}"
+        cd "$DIR/apps/mobile-rn" && npx expo start
+        ;;
+    esac
     ;;
   all)
     start_api
     echo ""
     echo "Open separate terminals for:"
-    echo "  ./run web      # Web (port 3000)"
-    echo "  ./run rn       # React Native"
-    echo "  ./run flutter  # Flutter"
+    echo "  ./run web          # Web (port 3000)"
+    echo "  ./run mobile-rn    # React Native (Expo Go)"
+    echo "  ./run flutter      # Flutter"
     ;;
   stop)
     stop_api
@@ -120,7 +162,15 @@ case "$1" in
     echo ""
     echo "  ./run web          API + Web dev server (port 3000)"
     echo "  ./run web build    Build web for production"
-    echo "  ./run rn           React Native"
+    echo "  ./run mobile-rn    API + React Native (Expo Go)"
+    echo "  ./run mobile-rn apk         Build Android APK (local)"
+    echo "  ./run mobile-rn aab         Build Android App Bundle (local)"
+    echo "  ./run mobile-rn ios         Build iOS .app (simulator, no signing)"
+    echo "  ./run mobile-rn ipa         Build iOS IPA (device, requires signing)"
+    echo "  ./run mobile-rn build       Build APK + AAB + iOS .app"
+    echo "  ./run mobile-rn eas-apk     Build Android APK (EAS cloud)"
+    echo "  ./run mobile-rn eas-ipa     Build iOS IPA (EAS cloud)"
+    echo "  ./run mobile-rn login       Login to EAS"
     echo "  ./run flutter      Flutter"
     echo ""
     echo "  ./run all          Start API + instructions"

@@ -60,7 +60,7 @@ func Load() *Config {
 		Port:            port,
 		DatabaseURL:     dbURL,
 		JWTSecret:       []byte(secret),
-		CORSOrigins:     []string{"http://localhost:3000"},
+		CORSOrigins:     []string{"http://localhost:3000", "http://localhost:8081", "http://localhost:19006", "http://10.30.242.232:8081"},
 		MaxOpenConns:    maxOpen,
 		MaxIdleConns:    maxIdle,
 		ConnMaxLifetime: 5 * time.Minute,

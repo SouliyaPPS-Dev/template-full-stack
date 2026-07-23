@@ -1,31 +1,64 @@
-const API_BASE = "http://localhost:8080/api/v1";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Config } from "../config";
+import { AuthResponse, User } from "../types";
 
-export interface User {
-  id: string;
-  email: string;
-  full_name: string;
-  role: string;
-  is_active: boolean;
-}
-
-export interface AuthResponse {
-  access_token: string;
-  token_type: string;
-  user: User;
-}
+const API_BASE = Config.apiUrl;
 
 let _token: string | null = null;
 
+function base64Decode(str: string): string {
+  try {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+    let result = "";
+    let i = 0;
+    str = str.replace(/[^A-Za-z0-9+/=]/g, "");
+    while (i < str.length) {
+      const a = chars.indexOf(str.charAt(i++));
+      const b = chars.indexOf(str.charAt(i++));
+      const c = chars.indexOf(str.charAt(i++));
+      const d = chars.indexOf(str.charAt(i++));
+      result += String.fromCharCode(
+        ((a << 2) | (b >> 4)) & 255,
+        ((b & 15) << 4) | (c >> 2),
+        c === 64 ? 0 : ((c & 3) << 6) | d
+      );
+    }
+    return result;
+  } catch {
+    return "";
+  }
+}
+
+async function getToken(): Promise<string | null> {
+  if (_token) return _token;
+  try {
+    _token = await AsyncStorage.getItem("user_token");
+  } catch {
+    _token = null;
+  }
+  return _token;
+}
+
 export async function api<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = await getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...((options?.headers as Record<string, string>) || {}),
   };
-  if (_token) {
-    headers["Authorization"] = `Bearer ${_token}`;
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+
+  if (res.status === 401) {
+    _token = null;
+    try {
+      await AsyncStorage.removeItem("user_token");
+      await AsyncStorage.removeItem("user");
+    } catch {}
+    throw new Error("Unauthorized");
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Request failed" }));
@@ -41,15 +74,28 @@ export async function login(email: string, password: string): Promise<AuthRespon
     body: JSON.stringify({ email, password }),
   });
   _token = data.access_token;
+  try {
+    await AsyncStorage.setItem("user_token", data.access_token);
+    await AsyncStorage.setItem("user", JSON.stringify(data.user));
+  } catch {}
   return data;
 }
 
-export async function register(email: string, password: string, fullName: string): Promise<AuthResponse> {
+export async function register(
+  email: string,
+  password: string,
+  fullName: string,
+  phone?: string
+): Promise<AuthResponse> {
   const data = await api<AuthResponse>("/auth/register", {
     method: "POST",
-    body: JSON.stringify({ email, password, full_name: fullName }),
+    body: JSON.stringify({ email, password, full_name: fullName, phone }),
   });
   _token = data.access_token;
+  try {
+    await AsyncStorage.setItem("user_token", data.access_token);
+    await AsyncStorage.setItem("user", JSON.stringify(data.user));
+  } catch {}
   return data;
 }
 
@@ -57,10 +103,55 @@ export async function getMe(): Promise<User> {
   return api<User>("/auth/me");
 }
 
-export function logout() {
-  _token = null;
+export async function updateProfile(data: {
+  full_name?: string;
+  phone?: string;
+}): Promise<User> {
+  const updated = await api<User>("/auth/me", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+  try {
+    await AsyncStorage.setItem("user", JSON.stringify(updated));
+  } catch {}
+  return updated;
 }
 
-export function setToken(token: string) {
-  _token = token;
+export async function logout(): Promise<void> {
+  _token = null;
+  try {
+    await AsyncStorage.removeItem("user_token");
+    await AsyncStorage.removeItem("user");
+  } catch {}
+}
+
+export async function getStoredUser(): Promise<User | null> {
+  try {
+    const raw = await AsyncStorage.getItem("user");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function isAuthenticated(): Promise<boolean> {
+  try {
+    const token = await getToken();
+    if (!token) return false;
+    const parts = token.split(".");
+    if (parts.length !== 3) return false;
+    const payloadStr = base64Decode(parts[1]);
+    if (!payloadStr) return false;
+    const payload = JSON.parse(payloadStr);
+    if (payload.exp && Date.now() >= payload.exp * 1000) {
+      await logout();
+      return false;
+    }
+    return true;
+  } catch {
+    try {
+      await logout();
+    } catch {}
+    return false;
+  }
 }

@@ -8,7 +8,7 @@ const navItems = [
   { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
   { label: "Products", path: "/admin/products", icon: Package },
   { label: "Orders", path: "/admin/orders", icon: ShoppingCart },
-  { label: "Customers", path: "/admin/customers", icon: Users },
+  { label: "Users", path: "/admin/users", icon: Users },
   { label: "Settings", path: "/admin/settings", icon: Settings },
 ];
 
