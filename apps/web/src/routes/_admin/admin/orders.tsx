@@ -38,8 +38,9 @@ async function loader() {
     const base = getApiBase();
     const res = await fetch(`${base}/orders`);
     if (!res.ok) return { orders: [] as Order[] };
-    const orders = await res.json();
-    return { orders };
+    const text = await res.text();
+    if (text.startsWith("<!")) return { orders: [] as Order[] };
+    return { orders: JSON.parse(text) };
   } catch {
     return { orders: [] as Order[] };
   }

@@ -11,6 +11,7 @@ import {
   ScrollView,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { useResponsive } from "../hooks/useResponsive";
 import {
   Colors,
   Spacing,
@@ -25,6 +26,7 @@ interface Props {
 
 export default function LoginScreen({ onLogin, onRegister }: Props) {
   const navigation = useNavigation();
+  const { isDesktop, isTablet } = useResponsive();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,79 +52,83 @@ export default function LoginScreen({ onLogin, onRegister }: Props) {
     }
   };
 
+  const formWidth = isDesktop ? 420 : isTablet ? 380 : "100%";
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <Text style={styles.logo}>MyStore</Text>
-          <Text style={styles.subtitle}>
-            {isSignUp ? "Create your account" : "Sign in to your account"}
-          </Text>
-        </View>
-
-        {isSignUp && (
-          <>
-            <TextInput
-              style={styles.input}
-              placeholder="Full Name"
-              placeholderTextColor={Colors.placeholder}
-              value={fullName}
-              onChangeText={setFullName}
-              autoCapitalize="words"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Phone (optional)"
-              placeholderTextColor={Colors.placeholder}
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-            />
-          </>
-        )}
-
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor={Colors.placeholder}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor={Colors.placeholder}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={Colors.white} />
-          ) : (
-            <Text style={styles.buttonText}>
-              {isSignUp ? "Create Account" : "Sign In"}
+      <ScrollView contentContainerStyle={[styles.scroll, isDesktop && styles.scrollDesktop]} keyboardShouldPersistTaps="handled">
+        <View style={[styles.form, { width: formWidth }]}>
+          <View style={styles.header}>
+            <Text style={[styles.logo, isDesktop && styles.logoDesktop]}>Template</Text>
+            <Text style={styles.subtitle}>
+              {isSignUp ? "Create your account" : "Sign in to your account"}
             </Text>
-          )}
-        </TouchableOpacity>
+          </View>
 
-        <TouchableOpacity onPress={() => { setIsSignUp(!isSignUp); setError(""); }}>
-          <Text style={styles.link}>
-            {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
-          </Text>
-        </TouchableOpacity>
+          {isSignUp && (
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Full Name"
+                placeholderTextColor={Colors.placeholder}
+                value={fullName}
+                onChangeText={setFullName}
+                autoCapitalize="words"
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Phone (optional)"
+                placeholderTextColor={Colors.placeholder}
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+              />
+            </>
+          )}
+
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor={Colors.placeholder}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor={Colors.placeholder}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={Colors.white} />
+            ) : (
+              <Text style={styles.buttonText}>
+                {isSignUp ? "Create Account" : "Sign In"}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => { setIsSignUp(!isSignUp); setError(""); }}>
+            <Text style={styles.link}>
+              {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -131,12 +137,18 @@ export default function LoginScreen({ onLogin, onRegister }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scroll: { flexGrow: 1, justifyContent: "center", padding: Spacing.xxl },
+  scrollDesktop: {
+    alignItems: "center",
+    paddingVertical: 60,
+  },
+  form: { width: "100%" },
   header: { alignItems: "center", marginBottom: 32 },
   logo: {
     fontSize: FontSize.logo,
     fontWeight: Platform.OS === "android" ? "700" : "bold",
     color: Colors.primary,
   },
+  logoDesktop: { fontSize: 48 },
   subtitle: { fontSize: FontSize.lg, color: Colors.textSecondary, marginTop: Spacing.sm },
   input: {
     borderWidth: 1,
@@ -154,6 +166,9 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     alignItems: "center",
     marginTop: Spacing.sm,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   buttonText: {
     color: Colors.white,

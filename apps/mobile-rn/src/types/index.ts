@@ -41,6 +41,15 @@ export interface Category {
   is_active: boolean;
 }
 
+export interface OrderItem {
+  id: string;
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  subtotal: number;
+}
+
 export interface Order {
   id: string;
   order_number: string;
@@ -48,6 +57,7 @@ export interface Order {
   payment_status: string;
   grand_total: number;
   created_at: string;
+  items: OrderItem[];
 }
 
 export interface Setting {

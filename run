@@ -81,13 +81,13 @@ case "$1" in
     case "$2" in
       build)
         echo -e "${G}Building Web for production...${NC}"
-        cd "$DIR/apps/web" && npx vite build
-        echo -e "${G}Build complete → apps/web/dist/${NC}"
+        cd "$DIR/apps/web" && rm -rf dist .output && npx vite build
+        echo -e "${G}Build complete → apps/web/.output/public/${NC}"
         ;;
       *)
         start_api
-        echo -e "${G}Starting Web (port 3000)...${NC}"
-        cd "$DIR/apps/web" && npx vite --port 3000
+        echo -e "${G}Starting Web (port 8081)...${NC}"
+        cd "$DIR/apps/web" && npx vite --port 8081
         ;;
     esac
     ;;
@@ -143,7 +143,7 @@ case "$1" in
     start_api
     echo ""
     echo "Open separate terminals for:"
-    echo "  ./run web          # Web (port 3000)"
+    echo "  ./run web          # Web (port 8081)"
     echo "  ./run mobile-rn    # React Native (Expo Go)"
     echo "  ./run flutter      # Flutter"
     ;;
@@ -160,7 +160,7 @@ case "$1" in
     echo "  ./run api stop     Stop Go API"
     echo "  ./run api status   Check API status"
     echo ""
-    echo "  ./run web          API + Web dev server (port 3000)"
+    echo "  ./run web          API + Web dev server (port 8081)"
     echo "  ./run web build    Build web for production"
     echo "  ./run mobile-rn    API + React Native (Expo Go)"
     echo "  ./run mobile-rn apk         Build Android APK (local)"
@@ -176,8 +176,8 @@ case "$1" in
     echo "  ./run all          Start API + instructions"
     echo "  ./run stop         Stop all background services"
     echo ""
-    echo "Admin panel: http://localhost:3000/admin"
-    echo "Admin login: admin@mystore.com / admin123"
+    echo "Admin panel: http://localhost:8081/admin"
+    echo "Admin login: admin@template.com / admin123"
     echo ""
     ;;
 esac

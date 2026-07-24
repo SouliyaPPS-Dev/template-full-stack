@@ -1,23 +1,40 @@
 import React from "react";
-import { View, Text, Image, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Platform,
+  Image,
+} from "react-native";
 import { Product } from "../types";
+import { useResponsive } from "../hooks/useResponsive";
 import {
   Colors,
   Spacing,
   BorderRadius,
   FontSize,
-  CardShadow,
 } from "../theme";
 
 interface Props {
   product: Product;
   onAddToCart?: (product: Product) => void;
+  onPress?: () => void;
 }
 
-export default function ProductCard({ product, onAddToCart }: Props) {
+export default function ProductCard({ product, onAddToCart, onPress }: Props) {
+  const { isDesktop, isTablet } = useResponsive();
+
+  const cardWidth = isDesktop ? "23%" : isTablet ? "31%" : "100%";
+
   return (
-    <View style={styles.card}>
-      <View style={styles.imageContainer}>
+    <TouchableOpacity
+      style={[styles.card, { width: cardWidth }, isDesktop && styles.cardDesktop]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={[styles.imageContainer, isDesktop && styles.imageContainerDesktop]}>
         {product.images?.[0] ? (
           <Image source={{ uri: product.images[0] }} style={styles.image} resizeMode="cover" />
         ) : (
@@ -27,7 +44,7 @@ export default function ProductCard({ product, onAddToCart }: Props) {
         )}
       </View>
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
+        <Text style={styles.name} numberOfLines={isDesktop ? 2 : 1}>
           {product.name}
         </Text>
         <Text style={styles.sku}>SKU: {product.sku}</Text>
@@ -52,7 +69,7 @@ export default function ProductCard({ product, onAddToCart }: Props) {
           </TouchableOpacity>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -61,13 +78,23 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderRadius: BorderRadius.lg,
     marginBottom: Spacing.md,
-    ...CardShadow,
     overflow: "hidden",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  cardDesktop: {
+    marginBottom: 16,
   },
   imageContainer: {
     width: "100%",
     height: 180,
     backgroundColor: "#f5f5f5",
+  },
+  imageContainerDesktop: {
+    height: 200,
   },
   image: {
     width: "100%",

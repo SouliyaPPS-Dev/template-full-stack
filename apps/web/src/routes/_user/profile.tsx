@@ -18,8 +18,9 @@ async function loader() {
     const base = getApiBase();
     const res = await fetch(`${base}/auth/me`);
     if (!res.ok) return { user: null };
-    const user = await res.json();
-    return { user };
+    const text = await res.text();
+    if (text.startsWith("<!")) return { user: null };
+    return { user: JSON.parse(text) };
   } catch {
     return { user: null };
   }

@@ -61,7 +61,7 @@ function AdminLoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@mystore.com"
+                placeholder="admin@template.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required

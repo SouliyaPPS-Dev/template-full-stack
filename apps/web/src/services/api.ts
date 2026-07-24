@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080/api/v1";
+const API_BASE = import.meta.env.VITE_API_URL || "/api/v1";
 
 export function getApiBase(): string {
   return API_BASE;
@@ -70,11 +70,19 @@ export async function api<T>(path: string, options?: RequestInit, userType: User
   }
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Request failed" }));
+    const text = await res.text().catch(() => "");
+    let err: { error?: string } = {};
+    if (text && !text.startsWith("<!")) {
+      try { err = JSON.parse(text); } catch {}
+    }
     throw new Error(err.error || `API error: ${res.status}`);
   }
 
-  return res.json();
+  const text = await res.text();
+  if (text.startsWith("<!")) {
+    throw new Error("API unavailable");
+  }
+  return JSON.parse(text) as T;
 }
 
 export async function login(email: string, password: string): Promise<AuthResponse> {

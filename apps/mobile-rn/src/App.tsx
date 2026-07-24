@@ -25,6 +25,7 @@ import HomeScreen from "./screens/HomeScreen";
 import ProductsScreen from "./screens/ProductsScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import CartScreen from "./screens/CartScreen";
+import OrdersScreen from "./screens/OrdersScreen";
 import { Colors } from "./theme";
 
 const Stack = createNativeStackNavigator();
@@ -51,6 +52,7 @@ type RootParamList = {
   Products: undefined;
   Profile: undefined;
   Cart: undefined;
+  Orders: undefined;
 };
 
 function RootNavigator() {
@@ -143,7 +145,7 @@ function RootNavigator() {
             />
           )}
         </Stack.Screen>
-        <Stack.Screen name="Home" options={{ title: "MyStore" }}>
+        <Stack.Screen name="Home" options={{ title: "Template" }}>
           {() => (
             <HomeScreen user={user} onLogout={logout} />
           )}
@@ -162,6 +164,11 @@ function RootNavigator() {
           name="Cart"
           component={CartScreen}
           options={{ title: "Cart" }}
+        />
+        <Stack.Screen
+          name="Orders"
+          component={OrdersScreen}
+          options={{ title: "My Orders" }}
         />
       </Stack.Navigator>
     </NavigationContainer>

@@ -11,5 +11,5 @@ const FALLBACK_URL = Platform.select({
 
 export const Config = {
   apiUrl: (extra.apiUrl as string) || FALLBACK_URL,
-  appName: (extra.appName as string) || "MyStore",
+  appName: (extra.appName as string) || "Template",
 };

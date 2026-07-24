@@ -1,105 +1,152 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/models.dart';
+import '../../core/config.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
   final void Function(Product)? onAddToCart;
+  final VoidCallback? onTap;
 
   const ProductCard({
     super.key,
     required this.product,
     this.onAddToCart,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final isCompact = width < 400;
+
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image
-          Container(
-            height: 180,
-            width: double.infinity,
-            color: Colors.grey.shade100,
-            child: product.images.isNotEmpty
-                ? Image.network(
-                    product.images.first,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Center(
-                      child: Icon(Icons.image, size: 48, color: Colors.grey),
-                    ),
-                  )
-                : const Center(
-                    child: Icon(Icons.image, size: 48, color: Colors.grey),
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image
+            AspectRatio(
+              aspectRatio: isCompact ? 3 / 2 : 16 / 9,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(
+                    color: Colors.grey.shade100,
+                    child: product.images.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: product.images.first,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) => const Center(
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                            errorWidget: (_, __, ___) => const Center(
+                              child: Icon(Icons.image, size: 48, color: Colors.grey),
+                            ),
+                          )
+                        : const Center(
+                            child: Icon(Icons.image, size: 48, color: Colors.grey),
+                          ),
                   ),
-          ),
-          // Info
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product.name,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'SKU: ${product.sku}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 8),
-                Row(
+                  if (product.onSale)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '-${product.discountPercent.toStringAsFixed(0)}%',
+                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  if (!product.inStock)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black.withAlpha(100),
+                        child: const Center(
+                          child: Text('OUT OF STOCK', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // Info
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '\$${product.sellingPrice.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue),
+                      product.name,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    if (product.comparePrice > 0) ...[
-                      const SizedBox(width: 8),
+                    const SizedBox(height: 2),
+                    if (product.sku.isNotEmpty && !isCompact)
                       Text(
-                        '\$${product.comparePrice.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
-                          decoration: TextDecoration.lineThrough,
+                        'SKU: ${product.sku}',
+                        style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                      ),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        Text(
+                          '$currencySymbol ${product.sellingPrice.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontSize: isCompact ? 14 : 16,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        if (product.onSale && !isCompact) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            '$currencySymbol ${product.comparePrice.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      product.inStock ? '${product.stock} in stock' : 'Out of stock',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: product.inStock ? Colors.green : Colors.red,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (onAddToCart != null && product.inStock) ...[
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.tonalIcon(
+                          onPressed: () => onAddToCart!(product),
+                          icon: const Icon(Icons.add_shopping_cart, size: 16),
+                          label: Text(isCompact ? 'Add' : 'Add to Cart'),
                         ),
                       ),
                     ],
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  product.stock > 0
-                      ? '${product.stock} in stock'
-                      : 'Out of stock',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                if (onAddToCart != null) ...[
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: product.stock > 0
-                          ? () => onAddToCart!(product)
-                          : null,
-                      child: const Text('Add to Cart'),
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

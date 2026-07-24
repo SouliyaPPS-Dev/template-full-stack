@@ -1,16 +1,16 @@
 import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
 import 'models.dart';
 
 class ApiService {
   static String? _token;
+  static const _storage = FlutterSecureStorage();
 
   static Future<String?> get token async {
     if (_token != null) return _token;
-    final prefs = await SharedPreferences.getInstance();
-    _token = prefs.getString('user_token');
+    _token = await _storage.read(key: 'user_token');
     return _token;
   }
 
@@ -18,6 +18,7 @@ class ApiService {
     final t = await token;
     return {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       if (t != null) 'Authorization': 'Bearer $t',
     };
   }
@@ -27,14 +28,18 @@ class ApiService {
     final res = await http.get(
       Uri.parse('$apiBaseUrl$path'),
       headers: h,
-    );
+    ).timeout(const Duration(seconds: 30));
     if (res.statusCode == 401) {
       await logout();
       throw Exception('Unauthorized');
     }
     if (res.statusCode != 200) {
-      final err = jsonDecode(res.body);
-      throw Exception(err['error'] ?? 'API error: ${res.statusCode}');
+      try {
+        final err = jsonDecode(res.body);
+        throw Exception(err['error'] ?? 'API error: ${res.statusCode}');
+      } catch (_) {
+        throw Exception('API error: ${res.statusCode}');
+      }
     }
     return fromJson(jsonDecode(res.body));
   }
@@ -50,13 +55,17 @@ class ApiService {
       Uri.parse('$apiBaseUrl$path'),
       headers: h,
       body: jsonEncode(body),
-    );
+    ).timeout(const Duration(seconds: 30));
     if (res.statusCode == 401 && returnOn401) {
       throw Exception('Unauthorized');
     }
     if (res.statusCode != 200 && res.statusCode != 201) {
-      final err = jsonDecode(res.body);
-      throw Exception(err['error'] ?? 'API error: ${res.statusCode}');
+      try {
+        final err = jsonDecode(res.body);
+        throw Exception(err['error'] ?? 'API error: ${res.statusCode}');
+      } catch (_) {
+        throw Exception('API error: ${res.statusCode}');
+      }
     }
     return fromJson(jsonDecode(res.body));
   }
@@ -71,16 +80,44 @@ class ApiService {
       Uri.parse('$apiBaseUrl$path'),
       headers: h,
       body: jsonEncode(body),
-    );
+    ).timeout(const Duration(seconds: 30));
     if (res.statusCode == 401) {
       await logout();
       throw Exception('Unauthorized');
     }
     if (res.statusCode != 200) {
-      final err = jsonDecode(res.body);
-      throw Exception(err['error'] ?? 'API error: ${res.statusCode}');
+      try {
+        final err = jsonDecode(res.body);
+        throw Exception(err['error'] ?? 'API error: ${res.statusCode}');
+      } catch (_) {
+        throw Exception('API error: ${res.statusCode}');
+      }
     }
     return fromJson(jsonDecode(res.body));
+  }
+
+  static Future<T> delete<T>(
+    String path,
+    T Function(dynamic) fromJson,
+  ) async {
+    final h = await _headers();
+    final res = await http.delete(
+      Uri.parse('$apiBaseUrl$path'),
+      headers: h,
+    ).timeout(const Duration(seconds: 30));
+    if (res.statusCode == 401) {
+      await logout();
+      throw Exception('Unauthorized');
+    }
+    if (res.statusCode != 200 && res.statusCode != 204) {
+      try {
+        final err = jsonDecode(res.body);
+        throw Exception(err['error'] ?? 'API error: ${res.statusCode}');
+      } catch (_) {
+        throw Exception('API error: ${res.statusCode}');
+      }
+    }
+    return fromJson(res.body.isEmpty ? null : jsonDecode(res.body));
   }
 
   // ── Auth ───────────────────────────────────────────────────
@@ -92,9 +129,8 @@ class ApiService {
       (json) => AuthResponse.fromJson(json),
     );
     _token = data.accessToken;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_token', data.accessToken);
-    await prefs.setString('user', jsonEncode(data.user.toJson()));
+    await _storage.write(key: 'user_token', value: data.accessToken);
+    await _storage.write(key: 'user', value: jsonEncode(data.user.toJson()));
     return data;
   }
 
@@ -116,9 +152,8 @@ class ApiService {
       (json) => AuthResponse.fromJson(json),
     );
     _token = data.accessToken;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_token', data.accessToken);
-    await prefs.setString('user', jsonEncode(data.user.toJson()));
+    await _storage.write(key: 'user_token', value: data.accessToken);
+    await _storage.write(key: 'user', value: jsonEncode(data.user.toJson()));
     return data;
   }
 
@@ -142,21 +177,18 @@ class ApiService {
       body,
       (json) => User.fromJson(json),
     );
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user', jsonEncode(updated.toJson()));
+    await _storage.write(key: 'user', value: jsonEncode(updated.toJson()));
     return updated;
   }
 
   static Future<void> logout() async {
     _token = null;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('user_token');
-    await prefs.remove('user');
+    await _storage.delete(key: 'user_token');
+    await _storage.delete(key: 'user');
   }
 
   static Future<User?> getStoredUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('user');
+    final raw = await _storage.read(key: 'user');
     if (raw == null) return null;
     return User.fromJson(jsonDecode(raw));
   }
@@ -185,10 +217,24 @@ class ApiService {
 
   // ── Products ──────────────────────────────────────────────
 
-  static Future<List<Product>> getProducts() async {
+  static Future<List<Product>> getProducts({
+    String? categoryId,
+    String? search,
+  }) async {
+    final params = <String, String>{};
+    if (categoryId != null) params['category_id'] = categoryId;
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    final qs = params.isNotEmpty ? '?${Uri(queryParameters: params).query}' : '';
     return get<List<Product>>(
-      '/products',
+      '/products$qs',
       (json) => (json as List).map((e) => Product.fromJson(e)).toList(),
+    );
+  }
+
+  static Future<Product> getProduct(String id) async {
+    return get<Product>(
+      '/products/$id',
+      (json) => Product.fromJson(json),
     );
   }
 
@@ -198,6 +244,15 @@ class ApiService {
     return get<List<Category>>(
       '/categories',
       (json) => (json as List).map((e) => Category.fromJson(e)).toList(),
+    );
+  }
+
+  // ── Orders ────────────────────────────────────────────────
+
+  static Future<List<Order>> getOrders() async {
+    return get<List<Order>>(
+      '/orders',
+      (json) => (json as List).map((e) => Order.fromJson(e)).toList(),
     );
   }
 

@@ -18,9 +18,22 @@ interface Setting {
 
 async function loader() {
   const base = getApiBase();
+
+  async function fetchJson<T>(url: string, fallback: T): Promise<T> {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return fallback;
+      const text = await res.text();
+      if (text.startsWith("<!")) return fallback;
+      return JSON.parse(text) as T;
+    } catch {
+      return fallback;
+    }
+  }
+
   const [categories, settings] = await Promise.all([
-    fetch(`${base}/categories`).then((r) => r.json()) as Promise<Category[]>,
-    fetch(`${base}/settings`).then((r) => r.json()) as Promise<Setting[]>,
+    fetchJson<Category[]>(`${base}/categories`, []),
+    fetchJson<Setting[]>(`${base}/settings`, []),
   ]);
   return { categories, settings };
 }
@@ -34,7 +47,7 @@ function HomePage() {
   const { categories, settings } = Route.useLoaderData();
   const user = useAuth();
 
-  const storeName = settings?.find((s) => s.key === "store_name")?.value || "MyStore";
+  const storeName = settings?.find((s) => s.key === "store_name")?.value || "Template";
 
   return (
     <div className="flex flex-col gap-12 md:gap-16 py-4 md:py-8">

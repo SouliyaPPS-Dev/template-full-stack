@@ -1247,7 +1247,7 @@ bun run typecheck    # Type check
 
 - User routes: `/`, `/products`, `/cart`, `/login`
 - Admin routes: `/admin`, `/admin/products`, `/admin/orders`, `/admin/customers`, `/admin/settings`
-- Admin login: `/admin/login` (admin@mystore.com / admin123)
+- Admin login: `/admin/login` (admin@template.com / admin123)
 ```
 
 ### Mobile Flutter

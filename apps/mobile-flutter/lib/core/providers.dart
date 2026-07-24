@@ -1,6 +1,22 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/models.dart';
 import '../core/api_service.dart';
+
+// ── Theme Provider ────────────────────────────────────────────
+
+class ThemeNotifier extends StateNotifier<ThemeMode> {
+  ThemeNotifier() : super(ThemeMode.system);
+
+  void setTheme(ThemeMode mode) => state = mode;
+  void toggleTheme() {
+    state = state == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+  }
+}
+
+final themeProvider = StateNotifierProvider<ThemeNotifier, ThemeMode>((ref) {
+  return ThemeNotifier();
+});
 
 // ── Auth Provider ──────────────────────────────────────────────
 
@@ -73,10 +89,34 @@ final productsProvider = FutureProvider<List<Product>>((ref) async {
   return ApiService.getProducts();
 });
 
+// ── Search Provider ────────────────────────────────────────────
+
+final searchQueryProvider = StateProvider<String>((ref) => '');
+
+final filteredProductsProvider = FutureProvider<List<Product>>((ref) async {
+  final query = ref.watch(searchQueryProvider);
+  return ApiService.getProducts(search: query.isEmpty ? null : query);
+});
+
 // ── Categories Provider ────────────────────────────────────────
 
 final categoriesProvider = FutureProvider<List<Category>>((ref) async {
   return ApiService.getCategories();
+});
+
+// ── Selected Category Provider ─────────────────────────────────
+
+final selectedCategoryProvider = StateProvider<String?>((ref) => null);
+
+final categoryProductsProvider = FutureProvider<List<Product>>((ref) async {
+  final categoryId = ref.watch(selectedCategoryProvider);
+  return ApiService.getProducts(categoryId: categoryId);
+});
+
+// ── Orders Provider ────────────────────────────────────────────
+
+final ordersProvider = FutureProvider<List<Order>>((ref) async {
+  return ApiService.getOrders();
 });
 
 // ── Settings Provider ──────────────────────────────────────────

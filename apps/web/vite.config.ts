@@ -32,8 +32,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg"],
       manifest: {
-        name: "MyStore - E-commerce Platform",
-        short_name: "MyStore",
+        name: "Template - E-commerce Platform",
+        short_name: "Template",
         description: "Full-stack e-commerce platform",
         theme_color: "#171717",
         background_color: "#ffffff",
@@ -50,7 +50,9 @@ export default defineConfig({
         ],
       },
       workbox: {
+        globDirectory: ".output/public",
         globPatterns: ["**/*.{js,css,html,svg,woff,woff2}"],
+        globIgnores: ["**/node_modules/**/*", "sw.js", "workbox-*.js"],
         runtimeCaching: [
           {
             urlPattern: /^https?:\/\/.*\/api\/.*/i,

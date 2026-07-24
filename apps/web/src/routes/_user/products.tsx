@@ -17,8 +17,15 @@ interface Product {
 
 async function loader() {
   const base = getApiBase();
-  const products = await fetch(`${base}/products`).then((r) => r.json()) as Product[];
-  return { products };
+  try {
+    const res = await fetch(`${base}/products`);
+    if (!res.ok) return { products: [] as Product[] };
+    const text = await res.text();
+    if (text.startsWith("<!")) return { products: [] as Product[] };
+    return { products: JSON.parse(text) as Product[] };
+  } catch {
+    return { products: [] as Product[] };
+  }
 }
 
 export const Route = createFileRoute("/_user/products")({

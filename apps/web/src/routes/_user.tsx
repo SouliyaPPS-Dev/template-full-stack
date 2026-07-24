@@ -28,7 +28,7 @@ function UserLayout() {
         <div className="container mx-auto px-4 h-14 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 font-bold text-lg" onClick={closeMenu}>
             <Store className="h-6 w-6" />
-            MyStore
+            Template
           </Link>
 
           {/* Desktop nav */}
