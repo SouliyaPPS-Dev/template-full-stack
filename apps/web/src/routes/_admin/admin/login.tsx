@@ -4,20 +4,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { adminLogin, adminIsAuthenticated, getUser } from "@/services/api";
+import { adminLogin } from "@/services/api";
 
 function isClient(): boolean {
   return typeof window !== "undefined";
 }
 
 export const Route = createFileRoute("/_admin/admin/login")({
-  beforeLoad: () => {
+  beforeLoad: async () => {
     if (!isClient()) return;
-    if (adminIsAuthenticated()) {
-      const user = getUser("admin");
-      if (user && (user.role === "admin" || user.role === "superadmin" || user.role === "staff")) {
+    try {
+      const { getMe, setUser } = await import("@/services/api");
+      const user = await getMe("admin");
+      setUser(user, "admin");
+      if (user.role === "admin" || user.role === "superadmin" || user.role === "staff") {
         throw redirect({ to: "/admin" });
       }
+    } catch (err: any) {
+      if (err?.redirect) throw err;
     }
   },
   component: AdminLoginPage,

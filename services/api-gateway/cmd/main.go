@@ -37,7 +37,7 @@ func main() {
 			if origin != "" {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-				w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type")
+				w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-Auth-Type")
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				w.Header().Set("Access-Control-Max-Age", "300")
 			}
@@ -61,6 +61,9 @@ func main() {
 			r.Post("/auth/register", handlers.Register(cfg))
 			r.Post("/auth/login", handlers.Login(cfg))
 		})
+		r.Post("/auth/logout", handlers.Logout)
+		r.Post("/admin/login", handlers.AdminLogin(cfg))
+		r.Post("/admin/logout", handlers.AdminLogout)
 
 		// Public read-only
 		r.Get("/settings", handlers.GetSettings)

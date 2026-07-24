@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { login, register, isAuthenticated } from "@/services/api";
+import { login, register } from "@/services/api";
 import { ArrowLeft } from "lucide-react";
 import { z } from "zod";
 
@@ -19,10 +19,15 @@ function isClient(): boolean {
 export const Route = createFileRoute("/_user/login")({
   validateSearch: (search: Record<string, unknown>) =>
     loginSearchSchema.parse(search),
-  beforeLoad: () => {
+  beforeLoad: async () => {
     if (!isClient()) return;
-    if (isAuthenticated()) {
+    try {
+      const { getMe, setUser } = await import("@/services/api");
+      const user = await getMe();
+      setUser(user, "user");
       throw redirect({ to: "/" });
+    } catch (err: any) {
+      if (err?.redirect) throw err;
     }
   },
   component: LoginPage,

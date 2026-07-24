@@ -26,45 +26,67 @@ function isClient(): boolean {
   return typeof window !== "undefined";
 }
 
-function tokenKey(type: UserType): string {
-  return type === "admin" ? "admin_token" : "user_token";
-}
+// ── Auth state (in-memory, per-type) ──────────────────────────
+let currentUser: User | null = null;
+let currentAdmin: User | null = null;
 
-function userKey(type: UserType): string {
-  return type === "admin" ? "admin_user" : "user";
-}
-
-// ── Auth event system ──────────────────────────────────────────
 type AuthListener = (user: User | null) => void;
-const listeners = new Set<AuthListener>();
+const userListeners = new Set<AuthListener>();
+const adminListeners = new Set<AuthListener>();
 
-export function onAuthChange(listener: AuthListener): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
+function onUserAuthChange(listener: AuthListener): () => void {
+  userListeners.add(listener);
+  return () => userListeners.delete(listener);
 }
 
-function emitAuthChange(user: User | null) {
-  listeners.forEach((fn) => fn(user));
+function onAdminAuthChange(listener: AuthListener): () => void {
+  adminListeners.add(listener);
+  return () => adminListeners.delete(listener);
+}
+
+export function onAuthChange(userType: UserType, listener: AuthListener): () => void {
+  return userType === "admin"
+    ? onAdminAuthChange(listener)
+    : onUserAuthChange(listener);
+}
+
+function emitUserAuthChange(user: User | null) {
+  userListeners.forEach((fn) => fn(user));
+}
+
+function emitAdminAuthChange(user: User | null) {
+  adminListeners.forEach((fn) => fn(user));
+}
+
+function emitAuthChange(userType: UserType, user: User | null) {
+  if (userType === "admin") {
+    emitAdminAuthChange(user);
+  } else {
+    emitUserAuthChange(user);
+  }
 }
 // ───────────────────────────────────────────────────────────────
 
-export async function api<T>(path: string, options?: RequestInit, userType: UserType = "user"): Promise<T> {
-  const token = isClient() ? localStorage.getItem(tokenKey(userType)) : null;
+export async function api<T>(path: string, options?: RequestInit, _userType: UserType = "user"): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "X-Auth-Type": _userType,
     ...((options?.headers as Record<string, string>) || {}),
   };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers,
+    credentials: "include",
+  });
 
   if (res.status === 401) {
-    if (isClient()) {
-      localStorage.removeItem(tokenKey(userType));
-      localStorage.removeItem(userKey(userType));
-      emitAuthChange(null);
+    if (_userType === "admin") {
+      currentAdmin = null;
+      emitAdminAuthChange(null);
+    } else {
+      currentUser = null;
+      emitUserAuthChange(null);
     }
     throw new Error("Unauthorized");
   }
@@ -91,22 +113,20 @@ export async function login(email: string, password: string): Promise<AuthRespon
     body: JSON.stringify({ email, password }),
   });
   if (isClient()) {
-    localStorage.setItem(tokenKey("user"), data.access_token);
-    localStorage.setItem(userKey("user"), JSON.stringify(data.user));
-    emitAuthChange(data.user);
+    currentUser = data.user;
+    emitUserAuthChange(data.user);
   }
   return data;
 }
 
 export async function adminLogin(email: string, password: string): Promise<AuthResponse> {
-  const data = await api<AuthResponse>("/auth/login", {
+  const data = await api<AuthResponse>("/admin/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
   if (isClient()) {
-    localStorage.setItem(tokenKey("admin"), data.access_token);
-    localStorage.setItem(userKey("admin"), JSON.stringify(data.user));
-    emitAuthChange(data.user);
+    currentAdmin = data.user;
+    emitAdminAuthChange(data.user);
   }
   return data;
 }
@@ -117,9 +137,8 @@ export async function register(email: string, password: string, fullName: string
     body: JSON.stringify({ email, password, full_name: fullName, phone }),
   });
   if (isClient()) {
-    localStorage.setItem(tokenKey("user"), data.access_token);
-    localStorage.setItem(userKey("user"), JSON.stringify(data.user));
-    emitAuthChange(data.user);
+    currentUser = data.user;
+    emitUserAuthChange(data.user);
   }
   return data;
 }
@@ -128,49 +147,45 @@ export async function getMe(userType: UserType = "user"): Promise<User> {
   return api<User>("/auth/me", undefined, userType);
 }
 
-export function logout(userType: UserType = "user") {
+export async function logout(userType: UserType = "user") {
+  try {
+    await api(`/${userType === "admin" ? "admin" : "auth"}/logout`, { method: "POST" });
+  } catch {}
   if (isClient()) {
-    localStorage.removeItem(tokenKey(userType));
-    localStorage.removeItem(userKey(userType));
-    emitAuthChange(null);
+    if (userType === "admin") {
+      currentAdmin = null;
+      emitAdminAuthChange(null);
+    } else {
+      currentUser = null;
+      emitUserAuthChange(null);
+    }
   }
 }
 
 export function adminLogout() {
-  logout("admin");
+  return logout("admin");
 }
 
 export function getUser(userType: UserType = "user"): User | null {
   if (!isClient()) return null;
-  const user = localStorage.getItem(userKey(userType));
-  return user ? JSON.parse(user) : null;
+  return userType === "admin" ? currentAdmin : currentUser;
 }
 
-function checkTokenValid(tokenKey_: string, userKey_: string): boolean {
-  if (!isClient()) return false;
-  const token = localStorage.getItem(tokenKey_);
-  if (!token) return false;
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    if (payload.exp && Date.now() >= payload.exp * 1000) {
-      localStorage.removeItem(tokenKey_);
-      localStorage.removeItem(userKey_);
-      return false;
-    }
-  } catch {
-    localStorage.removeItem(tokenKey_);
-    localStorage.removeItem(userKey_);
-    return false;
+export function setUser(user: User | null, userType: UserType = "user") {
+  if (userType === "admin") {
+    currentAdmin = user;
+  } else {
+    currentUser = user;
   }
-  return true;
 }
 
-export function isAuthenticated(userType: UserType = "user"): boolean {
-  return checkTokenValid(tokenKey(userType), userKey(userType));
+export function isAuthenticated(_userType: UserType = "user"): boolean {
+  if (!isClient()) return false;
+  return _userType === "admin" ? currentAdmin !== null : currentUser !== null;
 }
 
 export function adminIsAuthenticated(): boolean {
-  return checkTokenValid(tokenKey("admin"), userKey("admin"));
+  return isAuthenticated("admin");
 }
 
 export async function updateProfile(data: { full_name?: string; phone?: string; avatar_url?: string }): Promise<User> {
@@ -179,8 +194,8 @@ export async function updateProfile(data: { full_name?: string; phone?: string; 
     body: JSON.stringify(data),
   }, "user");
   if (isClient()) {
-    localStorage.setItem(userKey("user"), JSON.stringify(updated));
-    emitAuthChange(updated);
+    currentUser = updated;
+    emitUserAuthChange(updated);
   }
   return updated;
 }

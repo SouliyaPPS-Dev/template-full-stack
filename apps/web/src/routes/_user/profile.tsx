@@ -6,77 +6,65 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { User, Mail, Calendar, Shield, Save, ArrowLeft, Loader2 } from "lucide-react";
-import { updateProfile, isAuthenticated, getMe, getUser, type User as UserType } from "@/services/api";
+import { updateProfile, getMe, getUser, setUser, type User as UserType } from "@/services/api";
 
 function isClient(): boolean {
   return typeof window !== "undefined";
 }
 
-function getStoredUser(): UserType | null {
-  if (!isClient()) return null;
-  return getUser("user");
-}
-
-async function loader() {
-  if (!isClient()) return { user: null as UserType | null };
-  try {
-    const user = await getMe();
-    return { user };
-  } catch {
-    return { user: getStoredUser() };
-  }
-}
-
 export const Route = createFileRoute("/_user/profile")({
-  beforeLoad: () => {
-    if (!isClient()) return;
-    if (!isAuthenticated()) {
-      throw redirect({ to: "/login" });
-    }
-  },
   component: ProfilePage,
-  loader,
 });
 
 function ProfilePage() {
   const queryClient = useQueryClient();
-  const { user: initialUser } = Route.useLoaderData();
+  const [redirecting, setRedirecting] = useState(false);
 
-  const { data: user, isLoading } = useQuery<UserType | null>({
+  const { data: user, isLoading, isError } = useQuery<UserType | null>({
     queryKey: ["profile"],
     queryFn: async () => {
-      try {
-        return await getMe();
-      } catch {
-        return getStoredUser();
-      }
+      const u = await getMe();
+      setUser(u, "user");
+      return u;
     },
-    initialData: initialUser ?? getStoredUser(),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
+    retry: false,
   });
 
-  const storedUser = user;
+  useEffect(() => {
+    if (isError && !redirecting) {
+      setRedirecting(true);
+      window.location.href = "/login";
+    }
+  }, [isError, redirecting]);
 
-  const [fullName, setFullName] = useState(storedUser?.full_name || "");
-  const [phone, setPhone] = useState(storedUser?.phone || "");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [mounted, setMounted] = useState(false);
   const [formattedDate, setFormattedDate] = useState("");
 
   useEffect(() => {
+    if (user) {
+      setFullName(user.full_name || "");
+      setPhone(user.phone || "");
+    }
+  }, [user]);
+
+  useEffect(() => {
     setMounted(true);
-    if (storedUser?.created_at) {
+    if (user?.created_at) {
       setFormattedDate(
-        new Date(storedUser.created_at).toLocaleDateString("en-US", {
+        new Date(user.created_at).toLocaleDateString("en-US", {
           year: "numeric",
           month: "long",
           day: "numeric",
         })
       );
     }
-  }, [storedUser?.created_at]);
+  }, [user?.created_at]);
 
   const mutation = useMutation({
     mutationFn: () => updateProfile({ full_name: fullName, phone }),
@@ -99,12 +87,24 @@ function ProfilePage() {
     mutation.mutate();
   };
 
-  if (isLoading || !storedUser) {
+  if (redirecting) {
     return (
       <div className="max-w-2xl mx-auto py-6 md:py-8 flex items-center justify-center min-h-[50vh]">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="max-w-2xl mx-auto py-6 md:py-8 flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
   }
 
   return (
@@ -121,8 +121,8 @@ function ProfilePage() {
           <User className="h-7 w-7 md:h-8 md:w-8 text-primary" />
         </div>
         <div>
-          <h1 className="text-xl md:text-2xl font-bold">{storedUser.full_name}</h1>
-          <p className="text-sm text-muted-foreground">{storedUser.email}</p>
+          <h1 className="text-xl md:text-2xl font-bold">{user.full_name}</h1>
+          <p className="text-sm text-muted-foreground">{user.email}</p>
         </div>
       </div>
 
@@ -136,14 +136,14 @@ function ProfilePage() {
             <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
             <div>
               <p className="text-xs text-muted-foreground">Email</p>
-              <p className="text-sm">{storedUser.email}</p>
+              <p className="text-sm">{user.email}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
             <div>
               <p className="text-xs text-muted-foreground">Role</p>
-              <p className="text-sm capitalize">{storedUser.role}</p>
+              <p className="text-sm capitalize">{user.role}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">

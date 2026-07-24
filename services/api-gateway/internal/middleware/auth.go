@@ -57,20 +57,51 @@ func GenerateJWT(cfg *config.Config, userID, role string) (string, error) {
 	return token.SignedString(cfg.JWTSecret)
 }
 
+func extractToken(r *http.Request) string {
+	authType := r.Header.Get("X-Auth-Type")
+
+	if authType == "admin" {
+		if cookie, err := r.Cookie("admin_token"); err == nil && cookie.Value != "" {
+			return cookie.Value
+		}
+		if cookie, err := r.Cookie("auth_token"); err == nil && cookie.Value != "" {
+			return cookie.Value
+		}
+	} else if authType == "user" {
+		if cookie, err := r.Cookie("auth_token"); err == nil && cookie.Value != "" {
+			return cookie.Value
+		}
+		if cookie, err := r.Cookie("admin_token"); err == nil && cookie.Value != "" {
+			return cookie.Value
+		}
+	} else {
+		if cookie, err := r.Cookie("auth_token"); err == nil && cookie.Value != "" {
+			return cookie.Value
+		}
+		if cookie, err := r.Cookie("admin_token"); err == nil && cookie.Value != "" {
+			return cookie.Value
+		}
+	}
+
+	authHeader := r.Header.Get("Authorization")
+	if authHeader != "" {
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) == 2 && parts[0] == "Bearer" {
+			return parts[1]
+		}
+	}
+	return ""
+}
+
 func Auth(cfg *config.Config) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
+			tokenStr := extractToken(r)
+			if tokenStr == "" {
 				writeError(w, http.StatusUnauthorized, "unauthorized")
 				return
 			}
-			parts := strings.SplitN(authHeader, " ", 2)
-			if len(parts) != 2 || parts[0] != "Bearer" {
-				writeError(w, http.StatusUnauthorized, "unauthorized")
-				return
-			}
-			claims, err := validateJWT(cfg, parts[1])
+			claims, err := validateJWT(cfg, tokenStr)
 			if err != nil {
 				writeError(w, http.StatusUnauthorized, "invalid or expired token")
 				return

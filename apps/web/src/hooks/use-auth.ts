@@ -8,7 +8,7 @@ export function useAuth(userType: UserType = "user"): User | null {
   useEffect(() => {
     setMounted(true);
     setUser(getUser(userType));
-    const unsub = onAuthChange((u) => setUser(u));
+    const unsub = onAuthChange(userType, (u: User | null) => setUser(u));
     return unsub;
   }, [userType]);
 

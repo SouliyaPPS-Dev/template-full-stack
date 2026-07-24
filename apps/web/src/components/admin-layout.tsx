@@ -1,8 +1,9 @@
 import { Link, useLocation, Outlet, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { LayoutDashboard, Package, ShoppingCart, Users, Settings, Store, LogOut, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { adminLogout } from "@/services/api";
-import { useAuth } from "@/hooks/use-auth";
+import { adminLogout, getMe, setUser } from "@/services/api";
 
 const navItems = [
   { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
@@ -20,7 +21,24 @@ function isActive(pathname: string, path: string) {
 export function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const user = useAuth("admin");
+
+  const { data: user, isError } = useQuery({
+    queryKey: ["admin-auth"],
+    queryFn: async () => {
+      const u = await getMe("admin");
+      setUser(u, "admin");
+      return u;
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (isError) {
+      adminLogout();
+      navigate({ to: "/admin/login", replace: true });
+    }
+  }, [isError, navigate]);
 
   function handleLogout() {
     adminLogout();

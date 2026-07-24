@@ -13,6 +13,30 @@ import (
 	"github.com/myorg/api-gateway/internal/models"
 )
 
+func setAuthCookie(w http.ResponseWriter, cfg *config.Config, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    token,
+		Path:     "/",
+		MaxAge:   int(cfg.JWTExpiry.Seconds()),
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   false,
+	})
+}
+
+func clearAuthCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   false,
+	})
+}
+
 func Register(cfg *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req models.RegisterRequest
@@ -68,6 +92,8 @@ func Register(cfg *config.Config) http.HandlerFunc {
 		}
 
 		database.AuditLog(userID, "register", "users", userID, nil, nil)
+
+		setAuthCookie(w, cfg, token)
 
 		writeJSON(w, http.StatusCreated, models.AuthResponse{
 			AccessToken: token,
@@ -127,12 +153,19 @@ func Login(cfg *config.Config) http.HandlerFunc {
 
 		database.AuditLog(user.ID, "login", "users", user.ID, nil, nil)
 
+		setAuthCookie(w, cfg, token)
+
 		writeJSON(w, http.StatusOK, models.AuthResponse{
 			AccessToken: token,
 			TokenType:   "bearer",
 			User:        user,
 		})
 	}
+}
+
+func Logout(w http.ResponseWriter, r *http.Request) {
+	clearAuthCookie(w)
+	writeJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
 }
 
 func Me(w http.ResponseWriter, r *http.Request) {
@@ -182,4 +215,84 @@ func UpdateMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, user)
+}
+
+func AdminLogin(cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req models.LoginRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
+
+		req.Email = strings.ToLower(strings.TrimSpace(req.Email))
+
+		if !validateEmail(req.Email) || req.Password == "" {
+			writeError(w, http.StatusUnauthorized, "invalid credentials")
+			return
+		}
+
+		var user models.User
+		var passwordHash string
+		err := database.DB.QueryRow(
+			"SELECT id, email, full_name, COALESCE(phone,''), role, email_verified, is_active, created_at, password_hash FROM users WHERE email=$1",
+			req.Email,
+		).Scan(&user.ID, &user.Email, &user.FullName, &user.Phone, &user.Role, &user.EmailVerified, &user.IsActive, &user.CreatedAt, &passwordHash)
+		if err != nil {
+			writeError(w, http.StatusUnauthorized, "invalid credentials")
+			return
+		}
+
+		if !user.IsActive {
+			writeError(w, http.StatusForbidden, "account is disabled")
+			return
+		}
+
+		if user.Role != "admin" && user.Role != "superadmin" && user.Role != "staff" {
+			writeError(w, http.StatusForbidden, "admin access required")
+			return
+		}
+
+		if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)); err != nil {
+			writeError(w, http.StatusUnauthorized, "invalid credentials")
+			return
+		}
+
+		token, err := middleware.GenerateJWT(cfg, user.ID, user.Role)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to generate token")
+			return
+		}
+
+		database.AuditLog(user.ID, "admin_login", "users", user.ID, nil, nil)
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     "admin_token",
+			Value:    token,
+			Path:     "/",
+			MaxAge:   int(cfg.JWTExpiry.Seconds()),
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+			Secure:   false,
+		})
+
+		writeJSON(w, http.StatusOK, models.AuthResponse{
+			AccessToken: token,
+			TokenType:   "bearer",
+			User:        user,
+		})
+	}
+}
+
+func AdminLogout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "admin_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   false,
+	})
+	writeJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
 }

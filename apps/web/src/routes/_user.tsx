@@ -1,9 +1,9 @@
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Store, ShoppingCart, LogIn, UserPlus, User, LogOut, Menu, X } from "lucide-react";
-import { logout as apiLogout } from "@/services/api";
-import { useAuth } from "@/hooks/use-auth";
+import { Store, ShoppingCart, LogIn, UserPlus, User, LogOut, Menu, X, Loader2 } from "lucide-react";
+import { logout as apiLogout, getMe, getUser, setUser } from "@/services/api";
 
 export const Route = createFileRoute("/_user")({
   component: UserLayout,
@@ -12,10 +12,20 @@ export const Route = createFileRoute("/_user")({
 function UserLayout() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
-  const user = useAuth();
+
+  const { data: user } = useQuery({
+    queryKey: ["auth-user"],
+    queryFn: async () => {
+      const u = await getMe("user");
+      setUser(u, "user");
+      return u;
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
 
   const handleLogout = useCallback(() => {
-    apiLogout();
+    apiLogout("user");
     setMenuOpen(false);
     navigate({ to: "/" });
   }, [navigate]);
