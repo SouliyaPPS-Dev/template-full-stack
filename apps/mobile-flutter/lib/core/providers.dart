@@ -5,8 +5,9 @@ import '../core/api_service.dart';
 
 // ── Theme Provider ────────────────────────────────────────────
 
-class ThemeNotifier extends StateNotifier<ThemeMode> {
-  ThemeNotifier() : super(ThemeMode.system);
+class ThemeNotifier extends Notifier<ThemeMode> {
+  @override
+  ThemeMode build() => ThemeMode.system;
 
   void setTheme(ThemeMode mode) => state = mode;
   void toggleTheme() {
@@ -14,9 +15,9 @@ class ThemeNotifier extends StateNotifier<ThemeMode> {
   }
 }
 
-final themeProvider = StateNotifierProvider<ThemeNotifier, ThemeMode>((ref) {
-  return ThemeNotifier();
-});
+final themeProvider = NotifierProvider<ThemeNotifier, ThemeMode>(
+  ThemeNotifier.new,
+);
 
 // ── Auth Provider ──────────────────────────────────────────────
 
@@ -34,9 +35,11 @@ class AuthState {
   }
 }
 
-class AuthNotifier extends StateNotifier<AuthState> {
-  AuthNotifier() : super(AuthState()) {
+class AuthNotifier extends Notifier<AuthState> {
+  @override
+  AuthState build() {
     _init();
+    return AuthState();
   }
 
   Future<void> _init() async {
@@ -79,9 +82,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 }
 
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier();
-});
+final authProvider = NotifierProvider<AuthNotifier, AuthState>(
+  AuthNotifier.new,
+);
 
 // ── Products Provider ──────────────────────────────────────────
 
@@ -91,7 +94,17 @@ final productsProvider = FutureProvider<List<Product>>((ref) async {
 
 // ── Search Provider ────────────────────────────────────────────
 
-final searchQueryProvider = StateProvider<String>((ref) => '');
+class SearchQueryNotifier extends Notifier<String> {
+  @override
+  String build() => '';
+
+  void set(String value) => state = value;
+  void clear() => state = '';
+}
+
+final searchQueryProvider = NotifierProvider<SearchQueryNotifier, String>(
+  SearchQueryNotifier.new,
+);
 
 final filteredProductsProvider = FutureProvider<List<Product>>((ref) async {
   final query = ref.watch(searchQueryProvider);
@@ -106,7 +119,18 @@ final categoriesProvider = FutureProvider<List<Category>>((ref) async {
 
 // ── Selected Category Provider ─────────────────────────────────
 
-final selectedCategoryProvider = StateProvider<String?>((ref) => null);
+class SelectedCategoryNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void set(String? value) => state = value;
+  void clear() => state = null;
+}
+
+final selectedCategoryProvider =
+    NotifierProvider<SelectedCategoryNotifier, String?>(
+  SelectedCategoryNotifier.new,
+);
 
 final categoryProductsProvider = FutureProvider<List<Product>>((ref) async {
   final categoryId = ref.watch(selectedCategoryProvider);

@@ -40,7 +40,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
               icon: const Icon(Icons.clear_all),
               tooltip: 'Clear filter',
               onPressed: () {
-                ref.read(selectedCategoryProvider.notifier).state = null;
+                ref.read(selectedCategoryProvider.notifier).clear();
                 ref.invalidate(productsProvider);
               },
             ),
@@ -63,14 +63,14 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                           icon: const Icon(Icons.clear),
                           onPressed: () {
                             _searchController.clear();
-                            ref.read(searchQueryProvider.notifier).state = '';
+                            ref.read(searchQueryProvider.notifier).clear();
                           },
                         )
                       : null,
                   border: const OutlineInputBorder(),
                 ),
                 onChanged: (value) {
-                  ref.read(searchQueryProvider.notifier).state = value;
+                  ref.read(searchQueryProvider.notifier).set(value);
                   setState(() {});
                 },
               ),
@@ -95,10 +95,10 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                       label: Text(cat.name),
                       selected: isSelected,
                       onSelected: (selected) {
-                        ref.read(selectedCategoryProvider.notifier).state =
-                            selected ? cat.id : null;
+                        ref.read(selectedCategoryProvider.notifier).set(
+                            selected ? cat.id : null);
                         if (selected) {
-                          ref.read(searchQueryProvider.notifier).state = '';
+                          ref.read(searchQueryProvider.notifier).clear();
                           _searchController.clear();
                         }
                         ref.invalidate(productsProvider);
@@ -108,7 +108,16 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                 ),
               );
             },
-            loading: () => const SizedBox(),
+            loading: () => const SizedBox(
+              height: 44,
+              child: Center(
+                child: SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            ),
             error: (_, __) => const SizedBox(),
           ),
           const SizedBox(height: 8),

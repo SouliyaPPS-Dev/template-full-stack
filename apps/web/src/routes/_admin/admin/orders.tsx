@@ -36,7 +36,13 @@ function paymentColor(status: string) {
 async function loader() {
   try {
     const base = getApiBase();
-    const res = await fetch(`${base}/orders`);
+    const token = localStorage.getItem("admin_token");
+    const res = await fetch(`${base}/orders`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
     if (!res.ok) return { orders: [] as Order[] };
     const text = await res.text();
     if (text.startsWith("<!")) return { orders: [] as Order[] };

@@ -75,7 +75,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final authState = ref.watch(authProvider);
     final themeMode = ref.watch(themeProvider);
     final user = authState.user;
-    if (user == null) return const SizedBox();
+    if (user == null) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
     final width = MediaQuery.sizeOf(context).width;
     final isWide = width >= 1024;
     final isMedium = width >= 600;

@@ -1,28 +1,29 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, Mail, Calendar, Shield, Save, ArrowLeft } from "lucide-react";
-import { updateProfile, isAuthenticated, getApiBase } from "@/services/api";
-import { useAuth } from "@/hooks/use-auth";
+import { User, Mail, Calendar, Shield, Save, ArrowLeft, Loader2 } from "lucide-react";
+import { updateProfile, isAuthenticated, getMe, getUser, type User as UserType } from "@/services/api";
 
 function isClient(): boolean {
   return typeof window !== "undefined";
 }
 
+function getStoredUser(): UserType | null {
+  if (!isClient()) return null;
+  return getUser("user");
+}
+
 async function loader() {
+  if (!isClient()) return { user: null as UserType | null };
   try {
-    const base = getApiBase();
-    const res = await fetch(`${base}/auth/me`);
-    if (!res.ok) return { user: null };
-    const text = await res.text();
-    if (text.startsWith("<!")) return { user: null };
-    return { user: JSON.parse(text) };
+    const user = await getMe();
+    return { user };
   } catch {
-    return { user: null };
+    return { user: getStoredUser() };
   }
 }
 
@@ -39,9 +40,23 @@ export const Route = createFileRoute("/_user/profile")({
 
 function ProfilePage() {
   const queryClient = useQueryClient();
-  const { user: serverUser } = Route.useLoaderData();
-  const authUser = useAuth();
-  const storedUser = serverUser || authUser;
+  const { user: initialUser } = Route.useLoaderData();
+
+  const { data: user, isLoading } = useQuery<UserType | null>({
+    queryKey: ["profile"],
+    queryFn: async () => {
+      try {
+        return await getMe();
+      } catch {
+        return getStoredUser();
+      }
+    },
+    initialData: initialUser ?? getStoredUser(),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+
+  const storedUser = user;
 
   const [fullName, setFullName] = useState(storedUser?.full_name || "");
   const [phone, setPhone] = useState(storedUser?.phone || "");
@@ -65,10 +80,10 @@ function ProfilePage() {
 
   const mutation = useMutation({
     mutationFn: () => updateProfile({ full_name: fullName, phone }),
-    onSuccess: () => {
+    onSuccess: (updatedUser) => {
       setSuccess("Profile updated successfully!");
       setError("");
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.setQueryData(["profile"], updatedUser);
       setTimeout(() => setSuccess(""), 3000);
     },
     onError: (err: Error) => {
@@ -84,7 +99,13 @@ function ProfilePage() {
     mutation.mutate();
   };
 
-  if (!storedUser) return null;
+  if (isLoading || !storedUser) {
+    return (
+      <div className="max-w-2xl mx-auto py-6 md:py-8 flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto py-6 md:py-8">

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Loader2 } from "lucide-react";
 import { getApiBase } from "@/services/api";
 
 interface Product {
@@ -30,6 +30,11 @@ async function loader() {
 
 export const Route = createFileRoute("/_user/products")({
   component: ProductsPage,
+  pendingComponent: () => (
+    <div className="flex items-center justify-center min-h-[50vh]">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  ),
   loader,
 });
 

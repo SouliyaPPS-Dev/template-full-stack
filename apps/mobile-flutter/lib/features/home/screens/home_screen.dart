@@ -16,6 +16,7 @@ class HomeScreen extends ConsumerWidget {
     final isMedium = width >= 600;
 
     String storeName = 'Template';
+    bool loadingSettings = settingsAsync.isLoading;
     settingsAsync.whenData((settings) {
       final found = settings.where((s) => s.key == 'store_name');
       if (found.isNotEmpty) {
@@ -29,7 +30,7 @@ class HomeScreen extends ConsumerWidget {
           children: [
             const Icon(Icons.store, size: 24),
             const SizedBox(width: 8),
-            Text(storeName),
+            Text(loadingSettings ? 'Loading...' : storeName),
           ],
         ),
         actions: [
@@ -141,7 +142,7 @@ class HomeScreen extends ConsumerWidget {
                     avatar: const Icon(Icons.category, size: 18),
                     label: Text(cat.name),
                     onPressed: () {
-                      ref.read(selectedCategoryProvider.notifier).state = cat.id;
+                      ref.read(selectedCategoryProvider.notifier).set(cat.id);
                       context.push('/products');
                     },
                   )).toList(),

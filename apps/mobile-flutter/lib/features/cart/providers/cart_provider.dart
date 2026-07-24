@@ -29,8 +29,9 @@ class CartState {
   }
 }
 
-class CartNotifier extends StateNotifier<CartState> {
-  CartNotifier() : super(CartState());
+class CartNotifier extends Notifier<CartState> {
+  @override
+  CartState build() => CartState();
 
   void addItem(Product product, {int quantity = 1}) {
     final existing = state.items.where((i) => i.product.id == product.id);
@@ -74,6 +75,6 @@ class CartNotifier extends StateNotifier<CartState> {
   }
 }
 
-final cartProvider = StateNotifierProvider<CartNotifier, CartState>((ref) {
-  return CartNotifier();
-});
+final cartProvider = NotifierProvider<CartNotifier, CartState>(
+  CartNotifier.new,
+);

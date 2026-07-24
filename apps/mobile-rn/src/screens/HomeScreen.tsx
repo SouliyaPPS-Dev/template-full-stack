@@ -27,7 +27,7 @@ interface Props {
 export default function HomeScreen({ user, onLogout }: Props) {
   const navigation = useNavigation();
   const { data: categories, isLoading: loadingCategories } = useCategories();
-  const { data: settings } = useSettings();
+  const { data: settings, isLoading: loadingSettings } = useSettings();
   const { isDesktop, isTablet, columns, width } = useResponsive();
 
   const storeName =
@@ -40,7 +40,7 @@ export default function HomeScreen({ user, onLogout }: Props) {
     <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingHorizontal: horizontalPadding }]}>
       <View style={[styles.hero, isDesktop && styles.heroDesktop]}>
         <Text style={[styles.heroTitle, isDesktop && styles.heroTitleDesktop]}>
-          Welcome to {storeName}
+          {loadingSettings ? "Loading..." : `Welcome to ${storeName}`}
         </Text>
         <Text style={[styles.heroSubtitle, isDesktop && styles.heroSubtitleDesktop]}>
           Your one-stop e-commerce shop

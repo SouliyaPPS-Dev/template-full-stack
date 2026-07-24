@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShoppingCart, Store, Tag, ArrowRight, User } from "lucide-react";
+import { ShoppingCart, Store, Tag, ArrowRight, User, Loader2 } from "lucide-react";
 import { getApiBase } from "@/services/api";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -40,6 +40,11 @@ async function loader() {
 
 export const Route = createFileRoute("/_user/")({
   component: HomePage,
+  pendingComponent: () => (
+    <div className="flex items-center justify-center min-h-[50vh]">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  ),
   loader,
 });
 

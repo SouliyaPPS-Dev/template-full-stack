@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, ShoppingCart, Package, Users, AlertCircle } from "lucide-react";
+import { DollarSign, ShoppingCart, Package, Users, AlertCircle, Loader2 } from "lucide-react";
 import { api } from "@/services/api";
 
 interface DashboardStats {
@@ -35,6 +35,11 @@ async function loader() {
 
 export const Route = createFileRoute("/_admin/admin/")({
   component: AdminDashboard,
+  pendingComponent: () => (
+    <div className="flex items-center justify-center min-h-[50vh]">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  ),
   loader,
 });
 
