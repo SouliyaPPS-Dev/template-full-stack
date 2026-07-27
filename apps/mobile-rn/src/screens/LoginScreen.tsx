@@ -11,6 +11,7 @@ import {
   ScrollView,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { Feather } from "@expo/vector-icons";
 import { useResponsive } from "../hooks/useResponsive";
 import {
   Colors,
@@ -34,6 +35,7 @@ export default function LoginScreen({ onLogin, onRegister }: Props) {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async () => {
     setError("");
@@ -98,14 +100,27 @@ export default function LoginScreen({ onLogin, onRegister }: Props) {
             keyboardType="email-address"
             autoCapitalize="none"
           />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor={Colors.placeholder}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Password"
+              placeholderTextColor={Colors.placeholder}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={() => setShowPassword(!showPassword)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Feather
+                name={showPassword ? "eye-off" : "eye"}
+                size={20}
+                color={Colors.textMuted}
+              />
+            </TouchableOpacity>
+          </View>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -158,6 +173,25 @@ const styles = StyleSheet.create({
     fontSize: FontSize.lg,
     marginBottom: Spacing.md,
     backgroundColor: Colors.cardBg,
+    color: Colors.text,
+  },
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.sm,
+    marginBottom: Spacing.md,
+    backgroundColor: Colors.cardBg,
+  },
+  passwordInput: {
+    flex: 1,
+    padding: 14,
+    fontSize: FontSize.lg,
+    color: Colors.text,
+  },
+  eyeButton: {
+    paddingHorizontal: 14,
   },
   error: { color: Colors.error, fontSize: FontSize.md, marginBottom: Spacing.sm, textAlign: "center" },
   button: {
