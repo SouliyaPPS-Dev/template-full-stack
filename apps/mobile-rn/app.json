@@ -13,20 +13,26 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.template.app"
+      "bundleIdentifier": "com.template.app",
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#2563eb"
       },
       "package": "com.template.app",
-      "ndkVersion": "28.2.13676358"
+      "ndkVersion": "28.2.13676358",
+      "usesCleartextTraffic": true
     },
     "web": {
       "bundler": "metro"
     },
     "extra": {
-      "apiUrl": "http://10.30.242.232:8080/api/v1",
+      "apiUrl": "http://10.238.134.232:8080/api/v1",
       "appName": "Template",
       "eas": {
         "projectId": "bfaa84f6-3fc0-4db2-ad28-f2df1a230980"
