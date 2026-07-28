@@ -68,25 +68,97 @@ function emitAuthChange(userType: UserType, user: User | null) {
 }
 // ───────────────────────────────────────────────────────────────
 
-// ── Gradio API caller (for HF Spaces production) ──────────────
-async function gradioCall(apiName: string, data: Record<string, unknown> = {}): Promise<unknown> {
-  const res = await fetch(`${API_BASE}/gradio_api/api/${apiName}`, {
+// ── Gradio Queue API caller (for HF Spaces production) ────────
+let fnIndexCache: Record<string, number> = {};
+
+async function getFnIndex(apiName: string): Promise<number> {
+  if (fnIndexCache[apiName] !== undefined) return fnIndexCache[apiName];
+
+  const res = await fetch(`${API_BASE}/gradio_api/info`);
+  if (!res.ok) throw new Error("Failed to fetch Gradio API info");
+
+  const info = await res.json();
+  const endpoints = info.named_endpoints || {};
+
+  for (const [name, endpoint] of Object.entries(endpoints)) {
+    const cleanName = name.replace(/^\//, "");
+    fnIndexCache[cleanName] = (endpoint as { parameters: unknown[] }).parameters.length;
+  }
+
+  // Map function names to their fn_index (order in dependencies)
+  const depRes = await fetch(`${API_BASE}/`);
+  const html = await depRes.text();
+  const match = html.match(/"dependencies":\s*(\[[\s\S]*?\])/);
+  if (match) {
+    try {
+      const deps = JSON.parse(match[1]);
+      deps.forEach((dep: { api_name?: string }, idx: number) => {
+        if (dep.api_name) {
+          fnIndexCache[dep.api_name] = idx;
+        }
+      });
+    } catch {}
+  }
+
+  return fnIndexCache[apiName] ?? 0;
+}
+
+async function gradioQueueCall(apiName: string, data: unknown[] = []): Promise<string> {
+  const fnIndex = await getFnIndex(apiName);
+
+  // Join queue
+  const joinRes = await fetch(`${API_BASE}/gradio_api/queue/join`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ data: Object.values(data) }),
+    body: JSON.stringify({ data, fn_index: fnIndex }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `Gradio API error: ${res.status}`);
+
+  if (!joinRes.ok) {
+    throw new Error(`Queue join failed: ${joinRes.status}`);
   }
-  const result = await res.json();
-  return result.data?.[0] ?? result;
+
+  const { event_id } = await joinRes.json();
+
+  // Poll for result
+  const dataRes = await fetch(`${API_BASE}/gradio_api/queue/data?session_hash=${event_id}`);
+  if (!dataRes.ok) {
+    throw new Error(`Queue data failed: ${dataRes.status}`);
+  }
+
+  const reader = dataRes.body?.getReader();
+  if (!reader) throw new Error("No reader");
+
+  const decoder = new TextDecoder();
+  let result = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    const chunk = decoder.decode(value);
+    const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
+
+    for (const line of lines) {
+      try {
+        const event = JSON.parse(line.slice(6));
+        if (event.msg === "process_completed") {
+          result = event.output?.data?.[0] ?? "";
+          return result;
+        }
+        if (event.msg === "queue_full") {
+          throw new Error("Queue full");
+        }
+      } catch {}
+    }
+  }
+
+  return result;
 }
 
 // ── Main API caller ────────────────────────────────────────────
 export async function api<T>(path: string, options?: RequestInit, _userType: UserType = "user"): Promise<T> {
-  // For HF Spaces production, use Gradio API
-  if (IS_PRODUCTION && !path.includes("/health")) {
+  // For HF Spaces production, use Gradio queue API
+  if (IS_PRODUCTION) {
     return gradioProxy<T>(path, options, _userType);
   }
 
@@ -134,28 +206,29 @@ async function gradioProxy<T>(path: string, options?: RequestInit, _userType: Us
   const method = options?.method || "GET";
   const body = options?.body ? JSON.parse(options.body as string) : {};
 
-  // Map REST endpoints to Gradio function names
-  const routeMap: Record<string, (data: Record<string, unknown>) => Promise<unknown>> = {
-    "/auth/login": (d) => gradioCall("gr_login", { e: d.email, p: d.password }),
-    "/admin/login": (d) => gradioCall("gr_login", { e: d.email, p: d.password }),
-    "/auth/register": (d) => gradioCall("gr_register", { e: d.email, p: d.password, n: d.full_name, ph: d.phone || "" }),
-    "/auth/me": () => gradioCall("gr_health"),
-    "/products": () => gradioCall("gr_products"),
-    "/categories": () => Promise.resolve([]),
-    "/orders": () => Promise.resolve([]),
-    "/users": () => gradioCall("gr_health"),
-    "/dashboard/stats": () => gradioCall("gr_health"),
-    "/settings": () => Promise.resolve({ store_name: "API Template", currency: "USD" }),
-    "/health": () => gradioCall("gr_health"),
+  // Map REST endpoints to Gradio function names and data
+  const routeMap: Record<string, () => Promise<unknown>> = {
+    "/auth/login": () => gradioQueueCall("gr_login", [body.email, body.password]),
+    "/admin/login": () => gradioQueueCall("gr_login", [body.email, body.password]),
+    "/auth/register": () => gradioQueueCall("gr_register", [body.email, body.password, body.full_name, body.phone || ""]),
+    "/auth/me": () => gradioQueueCall("gr_health", []),
+    "/products": () => gradioQueueCall("gr_products", []),
+    "/categories": () => Promise.resolve(JSON.stringify([])),
+    "/orders": () => Promise.resolve(JSON.stringify([])),
+    "/users": () => gradioQueueCall("gr_health", []),
+    "/dashboard/stats": () => gradioQueueCall("gr_health", []),
+    "/settings": () => Promise.resolve(JSON.stringify({ store_name: "API Template", currency: "USD", tax_percent: 0 })),
+    "/health": () => gradioQueueCall("gr_health", []),
   };
 
   const handler = routeMap[path];
   if (handler) {
-    const result = await handler(body);
-    // Parse Gradio result string to JSON if needed
+    const result = await handler();
+    // Parse result string to JSON if needed
     if (typeof result === "string") {
       try {
-        return JSON.parse(result) as T;
+        const parsed = JSON.parse(result);
+        return parsed as T;
       } catch {
         return result as T;
       }
