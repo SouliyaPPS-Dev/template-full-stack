@@ -1,4 +1,5 @@
 const API_BASE = import.meta.env.VITE_API_URL || "/api/v1";
+const IS_PRODUCTION = import.meta.env.MODE === "production" || API_BASE.includes("hf.space");
 
 export function getApiBase(): string {
   return API_BASE;
@@ -67,7 +68,28 @@ function emitAuthChange(userType: UserType, user: User | null) {
 }
 // ───────────────────────────────────────────────────────────────
 
+// ── Gradio API caller (for HF Spaces production) ──────────────
+async function gradioCall(apiName: string, data: Record<string, unknown> = {}): Promise<unknown> {
+  const res = await fetch(`${API_BASE}/gradio_api/api/${apiName}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ data: Object.values(data) }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Gradio API error: ${res.status}`);
+  }
+  const result = await res.json();
+  return result.data?.[0] ?? result;
+}
+
+// ── Main API caller ────────────────────────────────────────────
 export async function api<T>(path: string, options?: RequestInit, _userType: UserType = "user"): Promise<T> {
+  // For HF Spaces production, use Gradio API
+  if (IS_PRODUCTION && !path.includes("/health")) {
+    return gradioProxy<T>(path, options, _userType);
+  }
+
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "X-Auth-Type": _userType,
@@ -105,6 +127,43 @@ export async function api<T>(path: string, options?: RequestInit, _userType: Use
     throw new Error("API unavailable");
   }
   return JSON.parse(text) as T;
+}
+
+// ── Gradio proxy for HF Spaces ────────────────────────────────
+async function gradioProxy<T>(path: string, options?: RequestInit, _userType: UserType = "user"): Promise<T> {
+  const method = options?.method || "GET";
+  const body = options?.body ? JSON.parse(options.body as string) : {};
+
+  // Map REST endpoints to Gradio function names
+  const routeMap: Record<string, (data: Record<string, unknown>) => Promise<unknown>> = {
+    "/auth/login": (d) => gradioCall("gr_login", { e: d.email, p: d.password }),
+    "/admin/login": (d) => gradioCall("gr_login", { e: d.email, p: d.password }),
+    "/auth/register": (d) => gradioCall("gr_register", { e: d.email, p: d.password, n: d.full_name, ph: d.phone || "" }),
+    "/auth/me": () => gradioCall("gr_health"),
+    "/products": () => gradioCall("gr_products"),
+    "/categories": () => Promise.resolve([]),
+    "/orders": () => Promise.resolve([]),
+    "/users": () => gradioCall("gr_health"),
+    "/dashboard/stats": () => gradioCall("gr_health"),
+    "/settings": () => Promise.resolve({ store_name: "API Template", currency: "USD" }),
+    "/health": () => gradioCall("gr_health"),
+  };
+
+  const handler = routeMap[path];
+  if (handler) {
+    const result = await handler(body);
+    // Parse Gradio result string to JSON if needed
+    if (typeof result === "string") {
+      try {
+        return JSON.parse(result) as T;
+      } catch {
+        return result as T;
+      }
+    }
+    return result as T;
+  }
+
+  throw new Error(`Unknown endpoint: ${path}`);
 }
 
 export async function login(email: string, password: string): Promise<AuthResponse> {

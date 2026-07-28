@@ -84,6 +84,19 @@ case "$1" in
         cd "$DIR/apps/web" && rm -rf dist .output && npx vite build
         echo -e "${G}Build complete → apps/web/.output/public/${NC}"
         ;;
+      prod)
+        echo -e "${G}Starting Web in PRODUCTION mode (HF API)...${NC}"
+        echo -e "${G}API: https://souliya-api-template.hf.space${NC}"
+        echo -e "${G}Web: http://localhost:8081${NC}"
+        cd "$DIR/apps/web" && VITE_API_URL="https://souliya-api-template.hf.space" npx vite --port 8081 --mode production
+        ;;
+      dev)
+        start_api
+        echo -e "${G}Starting Web in DEV mode (local API :8080)...${NC}"
+        echo -e "${G}API: http://localhost:8080${NC}"
+        echo -e "${G}Web: http://localhost:8081${NC}"
+        cd "$DIR/apps/web" && npx vite --port 8081
+        ;;
       *)
         start_api
         echo -e "${G}Starting Web (port 8081)...${NC}"
@@ -160,8 +173,10 @@ case "$1" in
     echo "  ./run api stop     Stop Go API"
     echo "  ./run api status   Check API status"
     echo ""
-    echo "  ./run web          API + Web dev server (port 8081)"
-    echo "  ./run web build    Build web for production"
+  echo "  ./run web          API + Web dev server (port 8081)"
+  echo "  ./run web dev      Web dev mode (local API :8080)"
+  echo "  ./run web prod     Web prod mode (HF API :443)"
+  echo "  ./run web build    Build web for production"
     echo "  ./run mobile-rn    API + React Native (Expo Go)"
     echo "  ./run mobile-rn apk         Build Android APK (local)"
     echo "  ./run mobile-rn aab         Build Android App Bundle (local)"
