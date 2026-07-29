@@ -286,46 +286,27 @@ if __name__ == "__main__":
     def api_settings():
         return {"store_name": "Template", "currency": "LAK", "tax_percent": 0}
 
-    # ── Serve SPA at root / (router wrapper interception) ──
-    MIME = {
+    # ── Serve SPA at root / (middleware interception) ──
+    _MIME = {
         ".js": "application/javascript", ".css": "text/css",
         ".svg": "image/svg+xml", ".ico": "image/x-icon",
         ".webmanifest": "application/manifest+json", ".html": "text/html",
     }
-    API_PREFIXES = ("/api/", "/gradio_api/", "/theme.css", "/static/", "/file=")
-    _orig_router = demo.app.router
+    _API_PREFIXES = ("/api/", "/gradio_api/", "/theme.css", "/static/", "/file=")
 
-    class _SPARouterWrapper:
-        def __init__(self, original):
-            object.__setattr__(self, "_original", original)
-            object.__setattr__(self, "_mime", MIME)
-            object.__setattr__(self, "_api_prefixes", API_PREFIXES)
-        def __getattr__(self, name):
-            return getattr(object.__getattribute__(self, "_original"), name)
-        def __setattr__(self, name, value):
-            setattr(object.__getattribute__(self, "_original"), name, value)
-        async def __call__(self, scope, receive, send):
-            if scope["type"] == "http" and scope.get("method") == "GET":
-                path = scope.get("path", "/")
-                rel = path.lstrip("/")
-                fp = (dist / rel) if rel else (dist / "index.html")
-                if fp.exists() and fp.is_file():
-                    body = fp.read_bytes()
-                    ct = object.__getattribute__(self, "_mime").get(fp.suffix, "application/octet-stream")
-                    headers = [(b"content-type", ct.encode()), (b"content-length", str(len(body)).encode())]
-                    await send({"type": "http.response.start", "status": 200, "headers": headers})
-                    await send({"type": "http.response.body", "body": body})
-                    return
-                if not path.startswith(object.__getattribute__(self, "_api_prefixes")):
-                    index = dist / "index.html"
-                    if index.exists():
-                        body = index.read_bytes()
-                        headers = [(b"content-type", b"text/html"), (b"content-length", str(len(body)).encode())]
-                        await send({"type": "http.response.start", "status": 200, "headers": headers})
-                        await send({"type": "http.response.body", "body": body})
-                        return
-            await object.__getattribute__(self, "_original")(scope, receive, send)
+    @demo.app.middleware("http")
+    async def spa_middleware(request: Request, call_next):
+        path = request.url.path
+        rel = path.lstrip("/")
+        fp = (dist / rel) if rel else (dist / "index.html")
+        if fp.exists() and fp.is_file():
+            return Response(content=fp.read_bytes(), media_type=_MIME.get(fp.suffix, "application/octet-stream"))
+        if not path.startswith(_API_PREFIXES):
+            index = dist / "index.html"
+            if index.exists():
+                return Response(content=index.read_bytes(), media_type="text/html")
+        return await call_next(request)
 
-    demo.app.router = _SPARouterWrapper(_orig_router)
+    demo.app.middleware_stack = None
 
     demo.block_thread()
