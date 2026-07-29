@@ -7,7 +7,7 @@ import gradio as gr
 import spaces
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import Response
 import bcrypt
 from jose import jwt
 from pydantic import BaseModel
@@ -174,7 +174,7 @@ if __name__ == "__main__":
 
     # Launch Gradio (triggers @spaces.GPU detection)
     demo.queue()
-    demo.launch(server_name="0.0.0.0", server_port=7860, prevent_thread_lock=True)
+    demo.launch(server_name="0.0.0.0", server_port=7860, prevent_thread_lock=True, ssr_mode=False)
 
     # Get Gradio's internal FastAPI app and add our routes to it
     app: FastAPI = demo.app
@@ -315,18 +315,5 @@ if __name__ == "__main__":
     dist = Path("dist")
     if dist.is_dir():
         app.mount("/spa", StaticFiles(directory="dist", html=True), name="spa")
-
-    # ── SPA fallback for client-side routing (TanStack Router) ──
-    # Any path not matched by other routes serves SPA's index.html
-    @app.middleware("http")
-    async def spa_fallback(request: Request, call_next):
-        path = request.url.path
-        skip_prefixes = ("/api/", "/gradio_api/", "/spa/", "/gradio/", "/file/", "/theme.css", "/assets/")
-        if path == "/" or any(path.startswith(p) for p in skip_prefixes):
-            return await call_next(request)
-        index = dist / "index.html"
-        if index.exists():
-            return FileResponse(str(index))
-        return await call_next(request)
 
     demo.block_thread()
