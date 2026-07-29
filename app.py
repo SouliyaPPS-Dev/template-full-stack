@@ -296,7 +296,13 @@ if __name__ == "__main__":
 
     @app.get("/api/v1/settings")
     def api_settings():
-        return {"store_name": "Template", "currency": "LAK", "tax_percent": 0}
+        return [
+            {"key": "store_name", "value": "Template"},
+            {"key": "store_phone", "value": ""},
+            {"key": "currency", "value": "LAK"},
+            {"key": "tax_percent", "value": "7"},
+            {"key": "store_logo", "value": ""},
+        ]
 
     # ── Serve SPA assets via middleware ──
     _MIME = {
