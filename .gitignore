@@ -1,9 +1,10 @@
 .api.pid
+.air.pid
 .api.log
 node_modules/
 dist/
 .turbo/
 *.log
 .env
-.env.localS
+.env.local
 .output

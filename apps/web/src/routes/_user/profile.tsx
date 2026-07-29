@@ -24,6 +24,7 @@ function ProfilePage() {
     queryKey: ["profile"],
     queryFn: async () => {
       const u = await getMe();
+      if (!u) throw new Error("not authenticated");
       setUser(u, "user");
       return u;
     },
@@ -33,11 +34,11 @@ function ProfilePage() {
   });
 
   useEffect(() => {
-    if (isError && !redirecting) {
+    if ((isError || (!isLoading && !user)) && !redirecting) {
       setRedirecting(true);
       window.location.href = "/login";
     }
-  }, [isError, redirecting]);
+  }, [isError, isLoading, user, redirecting]);
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");

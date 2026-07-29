@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Package } from "lucide-react";
-import { api, getApiBase } from "@/services/api";
+import { api } from "@/services/api";
 
 interface Product {
   id: string;
@@ -19,12 +19,8 @@ interface Product {
 
 async function loader() {
   try {
-    const base = getApiBase();
-    const res = await fetch(`${base}/products`);
-    if (!res.ok) return { products: [] as Product[] };
-    const text = await res.text();
-    if (text.startsWith("<!")) return { products: [] as Product[] };
-    return { products: JSON.parse(text) };
+    const products = await api<Product[]>("/products", undefined, "admin");
+    return { products };
   } catch {
     return { products: [] as Product[] };
   }

@@ -24,7 +24,7 @@ function AdminAuthGate() {
     queryKey: ["admin-auth"],
     queryFn: async () => {
       const u = await getMe("admin");
-      if (u.role !== "admin" && u.role !== "superadmin" && u.role !== "staff") {
+      if (!u || (u.role !== "admin" && u.role !== "superadmin" && u.role !== "staff")) {
         throw new Error("not admin");
       }
       setUser(u, "admin");

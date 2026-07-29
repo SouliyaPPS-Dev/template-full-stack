@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart, Store, Tag, ArrowRight, User, Loader2 } from "lucide-react";
-import { getApiBase } from "@/services/api";
+import { api, getApiBase } from "@/services/api";
 import { useAuth } from "@/hooks/use-auth";
 
 interface Category {
@@ -16,7 +16,20 @@ interface Setting {
   value: string;
 }
 
+const IS_PRODUCTION = import.meta.env.MODE === "production" || (typeof window !== "undefined" && window.location.hostname !== "localhost");
+
 async function loader() {
+  if (IS_PRODUCTION) {
+    try {
+      const [categories, settings] = await Promise.all([
+        api<Category[]>("/categories"),
+        api<Setting[]>("/settings"),
+      ]);
+      return { categories: categories || [], settings: settings || [] };
+    } catch {
+      return { categories: [], settings: [] };
+    }
+  }
   const base = getApiBase();
 
   async function fetchJson<T>(url: string, fallback: T): Promise<T> {

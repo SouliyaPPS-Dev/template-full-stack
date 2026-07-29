@@ -160,6 +160,10 @@ case "$1" in
     echo "  ./run mobile-rn    # React Native (Expo Go)"
     echo "  ./run flutter      # Flutter"
     ;;
+  seed)
+    echo -e "${G}Uploading seed data to HF bucket...${NC}"
+    bash "$DIR/scripts/seed-bucket.sh"
+    ;;
   stop)
     stop_api
     ;;
@@ -189,9 +193,11 @@ case "$1" in
     echo "  ./run flutter      Flutter"
     echo ""
     echo "  ./run all          Start API + instructions"
-    echo "  ./run stop         Stop all background services"
-    echo ""
-    echo "Admin panel: http://localhost:8081/admin"
+  echo "  ./run seed         Upload seed data to HF bucket storage"
+  echo ""
+  echo "  ./run stop         Stop all background services"
+  echo ""
+  echo "Admin panel: http://localhost:8081/admin"
     echo "Admin login: admin@template.com / admin123"
     echo ""
     ;;

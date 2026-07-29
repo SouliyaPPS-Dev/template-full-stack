@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
-import { api, getApiBase } from "@/services/api";
+import { api } from "@/services/api";
 
 interface Order {
   id: string;
@@ -35,18 +35,8 @@ function paymentColor(status: string) {
 
 async function loader() {
   try {
-    const base = getApiBase();
-    const token = localStorage.getItem("admin_token");
-    const res = await fetch(`${base}/orders`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
-    if (!res.ok) return { orders: [] as Order[] };
-    const text = await res.text();
-    if (text.startsWith("<!")) return { orders: [] as Order[] };
-    return { orders: JSON.parse(text) };
+    const orders = await api<Order[]>("/orders", undefined, "admin");
+    return { orders };
   } catch {
     return { orders: [] as Order[] };
   }

@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "created_at": "2026-07-29T00:00:00Z",
+  "description": "Seed data for API Template production database",
+  "data": {
+    "system_settings": [
+      { "setting_key": "store_name", "setting_value": "My Store", "description": "Store display name" },
+      { "setting_key": "store_phone", "setting_value": "+856 20 00 000 000", "description": "Store contact phone" },
+      { "setting_key": "currency", "setting_value": "LAK", "description": "Default currency" },
+      { "setting_key": "tax_percent", "setting_value": "7", "description": "Default tax rate" },
+      { "setting_key": "store_logo", "setting_value": "", "description": "Store logo URL" }
+    ],
+    "expense_categories": [
+      { "name": "Rent", "description": "Monthly rent" },
+      { "name": "Utilities", "description": "Electricity, water, internet" },
+      { "name": "Supplies", "description": "Office and store supplies" },
+      { "name": "Marketing", "description": "Advertising and promotions" },
+      { "name": "Transport", "description": "Delivery and logistics" }
+    ],
+    "users": [
+      { "email": "admin@template.com", "full_name": "Admin", "role": "admin", "is_active": true }
+    ],
+    "categories": [
+      { "name": "Electronics", "slug": "electronics", "description": "Electronic devices and accessories", "sort_order": 1 },
+      { "name": "Clothing", "slug": "clothing", "description": "Apparel and fashion items", "sort_order": 2 },
+      { "name": "Home & Garden", "slug": "home-garden", "description": "Home improvement and garden supplies", "sort_order": 3 },
+      { "name": "Food & Beverages", "slug": "food-beverages", "description": "Food and drink items", "sort_order": 4 },
+      { "name": "Books", "slug": "books", "description": "Books and educational materials", "sort_order": 5 }
+    ]
+  }
+}

@@ -14,7 +14,7 @@ export interface User {
   phone: string;
   role: string;
   is_active: boolean;
-  created_at: string;
+  created_at?: string;
 }
 
 export interface AuthResponse {
@@ -27,7 +27,7 @@ function isClient(): boolean {
   return typeof window !== "undefined";
 }
 
-// ── Auth state (in-memory, per-type) ──────────────────────────
+// ── Auth state (in-memory + localStorage persistence for production) ──
 let currentUser: User | null = null;
 let currentAdmin: User | null = null;
 
@@ -66,100 +66,104 @@ function emitAuthChange(userType: UserType, user: User | null) {
     emitUserAuthChange(user);
   }
 }
-// ───────────────────────────────────────────────────────────────
 
-// ── Gradio Queue API caller (for HF Spaces production) ────────
-let fnIndexCache: Record<string, number> = {};
-
-async function getFnIndex(apiName: string): Promise<number> {
-  if (fnIndexCache[apiName] !== undefined) return fnIndexCache[apiName];
-
-  const res = await fetch(`${API_BASE}/gradio_api/info`);
-  if (!res.ok) throw new Error("Failed to fetch Gradio API info");
-
-  const info = await res.json();
-  const endpoints = info.named_endpoints || {};
-
-  for (const [name, endpoint] of Object.entries(endpoints)) {
-    const cleanName = name.replace(/^\//, "");
-    fnIndexCache[cleanName] = (endpoint as { parameters: unknown[] }).parameters.length;
-  }
-
-  // Map function names to their fn_index (order in dependencies)
-  const depRes = await fetch(`${API_BASE}/`);
-  const html = await depRes.text();
-  const match = html.match(/"dependencies":\s*(\[[\s\S]*?\])/);
-  if (match) {
-    try {
-      const deps = JSON.parse(match[1]);
-      deps.forEach((dep: { api_name?: string }, idx: number) => {
-        if (dep.api_name) {
-          fnIndexCache[dep.api_name] = idx;
-        }
-      });
-    } catch {}
-  }
-
-  return fnIndexCache[apiName] ?? 0;
+// ── localStorage auth persistence (for production mode) ──
+function getStorageKey(userType: UserType): string {
+  return `auth_${userType}`;
 }
 
-async function gradioQueueCall(apiName: string, data: unknown[] = []): Promise<string> {
-  const fnIndex = await getFnIndex(apiName);
+function saveAuthToStorage(token: string, user: User, userType: UserType) {
+  if (!isClient()) return;
+  localStorage.setItem(getStorageKey(userType), JSON.stringify({ token, user }));
+}
 
-  // Join queue
-  const joinRes = await fetch(`${API_BASE}/gradio_api/queue/join`, {
+function clearAuthFromStorage(userType: UserType) {
+  if (!isClient()) return;
+  localStorage.removeItem(getStorageKey(userType));
+}
+
+function loadAuthFromStorage(userType: UserType): { token: string; user: User } | null {
+  if (!isClient()) return null;
+  try {
+    const raw = localStorage.getItem(getStorageKey(userType));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Restore auth state from localStorage on init
+if (isClient()) {
+  const saved = loadAuthFromStorage("admin");
+  if (saved) currentAdmin = saved.user;
+  const savedUser = loadAuthFromStorage("user");
+  if (savedUser) currentUser = savedUser.user;
+}
+
+// ── Gradio 5.x API caller (for HF Spaces production) ──
+async function gradioPredict<T>(apiName: string, data: unknown[] = []): Promise<T> {
+  const res = await fetch(`${API_BASE}/gradio_api/call/${apiName}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ data, fn_index: fnIndex }),
+    body: JSON.stringify({ data }),
   });
 
-  if (!joinRes.ok) {
-    throw new Error(`Queue join failed: ${joinRes.status}`);
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Gradio call failed: ${res.status}${text ? ` - ${text}` : ""}`);
   }
 
-  const { event_id } = await joinRes.json();
+  const { event_id } = await res.json();
 
-  // Poll for result
-  const dataRes = await fetch(`${API_BASE}/gradio_api/queue/data?session_hash=${event_id}`);
+  // Poll for result via SSE
+  const dataRes = await fetch(`${API_BASE}/gradio_api/call/${apiName}/${event_id}`);
   if (!dataRes.ok) {
-    throw new Error(`Queue data failed: ${dataRes.status}`);
+    throw new Error(`Gradio data fetch failed: ${dataRes.status}`);
   }
 
   const reader = dataRes.body?.getReader();
-  if (!reader) throw new Error("No reader");
+  if (!reader) throw new Error("No response body");
 
   const decoder = new TextDecoder();
-  let result = "";
+  let buffer = "";
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
+    buffer += decoder.decode(value, { stream: true });
 
-    const chunk = decoder.decode(value);
-    const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
-
-    for (const line of lines) {
-      try {
-        const event = JSON.parse(line.slice(6));
-        if (event.msg === "process_completed") {
-          result = event.output?.data?.[0] ?? "";
-          return result;
+    for (const line of buffer.split("\n")) {
+      if (line.startsWith("data: ")) {
+        try {
+          const event = JSON.parse(line.slice(6));
+          if (Array.isArray(event) && typeof event[0] === "string") {
+            return JSON.parse(event[0]) as T;
+          }
+        } catch {
+          // continue waiting for complete event
         }
-        if (event.msg === "queue_full") {
-          throw new Error("Queue full");
-        }
-      } catch {}
+      }
     }
   }
 
-  return result;
+  // Try parsing remaining buffer
+  for (const line of buffer.split("\n")) {
+    if (line.startsWith("data: ")) {
+      const event = JSON.parse(line.slice(6));
+      if (Array.isArray(event) && typeof event[0] === "string") {
+        return JSON.parse(event[0]) as T;
+      }
+      return event as T;
+    }
+  }
+
+  throw new Error("No result from Gradio API");
 }
 
-// ── Main API caller ────────────────────────────────────────────
+// ── Main API caller ──
 export async function api<T>(path: string, options?: RequestInit, _userType: UserType = "user"): Promise<T> {
-  // For HF Spaces production, use Gradio queue API
   if (IS_PRODUCTION) {
-    return gradioProxy<T>(path, options, _userType);
+    return gradioApiCaller<T>(path, options, _userType);
   }
 
   const headers: Record<string, string> = {
@@ -167,6 +171,9 @@ export async function api<T>(path: string, options?: RequestInit, _userType: Use
     "X-Auth-Type": _userType,
     ...((options?.headers as Record<string, string>) || {}),
   };
+
+  const token = isClient() ? localStorage.getItem(`token_${_userType}`) : null;
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -201,50 +208,155 @@ export async function api<T>(path: string, options?: RequestInit, _userType: Use
   return JSON.parse(text) as T;
 }
 
-// ── Gradio proxy for HF Spaces ────────────────────────────────
-async function gradioProxy<T>(path: string, options?: RequestInit, _userType: UserType = "user"): Promise<T> {
+// ── Gradio proxy for HF Spaces ──
+async function gradioApiCaller<T>(path: string, options?: RequestInit, _userType: UserType = "user"): Promise<T> {
   const method = options?.method || "GET";
   const body = options?.body ? JSON.parse(options.body as string) : {};
 
-  // Map REST endpoints to Gradio function names and data
-  const routeMap: Record<string, () => Promise<unknown>> = {
-    "/auth/login": () => gradioQueueCall("gr_login", [body.email, body.password]),
-    "/admin/login": () => gradioQueueCall("gr_login", [body.email, body.password]),
-    "/auth/register": () => gradioQueueCall("gr_register", [body.email, body.password, body.full_name, body.phone || ""]),
-    "/auth/me": () => gradioQueueCall("gr_health", []),
-    "/products": () => gradioQueueCall("gr_products", []),
-    "/categories": () => Promise.resolve(JSON.stringify([])),
-    "/orders": () => Promise.resolve(JSON.stringify([])),
-    "/users": () => gradioQueueCall("gr_health", []),
-    "/dashboard/stats": () => gradioQueueCall("gr_health", []),
-    "/settings": () => Promise.resolve(JSON.stringify({ store_name: "API Template", currency: "USD", tax_percent: 0 })),
-    "/health": () => gradioQueueCall("gr_health", []),
+  // Handle logout: clear auth state
+  if ((path === "/auth/logout" || path === "/admin/logout") && method === "POST") {
+    if (path === "/admin/logout") {
+      clearAuthFromStorage("admin");
+      currentAdmin = null;
+      emitAdminAuthChange(null);
+    } else {
+      clearAuthFromStorage("user");
+      currentUser = null;
+      emitUserAuthChange(null);
+    }
+    return { message: "Logged out" } as T;
+  }
+
+  // Handle /auth/me: return cached user or null in production
+  if (path === "/auth/me" && method === "GET") {
+    const saved = loadAuthFromStorage(_userType);
+    if (saved?.user) {
+      return saved.user as T;
+    }
+    return null as T;
+  }
+
+  // Handle /auth/me update
+  if (path === "/auth/me" && method === "PUT") {
+    const saved = loadAuthFromStorage(_userType);
+    if (saved) {
+      const updated: User = { ...saved.user, ...body };
+      saveAuthToStorage(saved.token, updated, _userType);
+      if (_userType === "admin") {
+        currentAdmin = updated;
+        emitAdminAuthChange(updated);
+      } else {
+        currentUser = updated;
+        emitUserAuthChange(updated);
+      }
+      return updated as T;
+    }
+    throw new Error("Unauthorized");
+  }
+
+  // Map REST endpoints to Gradio function names
+  const routeMap: Record<string, (data: unknown[]) => Promise<T>> = {
+    "/health": () => gradioPredict<T>("gr_health", []),
+    "/auth/login": () => gradioPredict<T>("gr_login", [body.email, body.password]),
+    "/admin/login": () => gradioPredict<T>("gr_login", [body.email, body.password]),
+    "/auth/register": () => gradioPredict<T>("gr_register", [body.email, body.password, body.full_name, body.phone || ""]),
+    "/products": () => gradioPredict<T>("gr_products", []),
   };
 
-  const handler = routeMap[path];
+  const trimmedPath = path.replace(/\/+$/, "");
+  const handler = routeMap[trimmedPath];
+
   if (handler) {
-    const result = await handler();
-    // Parse result string to JSON if needed
-    if (typeof result === "string") {
-      try {
-        const parsed = JSON.parse(result);
-        return parsed as T;
-      } catch {
-        return result as T;
+    const result = await handler([]);
+
+    // Handle login responses: save token + user to localStorage
+    if ((trimmedPath === "/auth/login" || trimmedPath === "/admin/login") && method === "POST") {
+      const authRes = result as unknown as AuthResponse;
+      if (authRes.access_token && authRes.user) {
+        saveAuthToStorage(authRes.access_token, authRes.user, _userType);
+        if (_userType === "admin") {
+          currentAdmin = authRes.user;
+          emitAdminAuthChange(authRes.user);
+        } else {
+          currentUser = authRes.user;
+          emitUserAuthChange(authRes.user);
+        }
       }
     }
-    return result as T;
+
+    // Handle register responses
+    if (trimmedPath === "/auth/register" && method === "POST") {
+      const authRes = result as unknown as AuthResponse;
+      if (authRes.access_token && authRes.user) {
+        saveAuthToStorage(authRes.access_token, authRes.user, "user");
+        currentUser = authRes.user;
+        emitUserAuthChange(authRes.user);
+      }
+    }
+
+    return result;
+  }
+
+  // For unregistered endpoints in production, return fallback
+  if (trimmedPath.startsWith("/categories")) {
+    return [] as T;
+  }
+  if (trimmedPath.startsWith("/orders")) {
+    if (method === "POST") {
+      return { id: "prod-only", order_number: "PROD-ORD", grand_total: 0, status: "pending", created_at: new Date().toISOString() } as T;
+    }
+    return [] as T;
+  }
+  if (trimmedPath.startsWith("/users")) {
+    if (method === "POST" || method === "PUT") {
+      const saved = loadAuthFromStorage("admin");
+      const newUser: User = { ...body, id: crypto.randomUUID?.() || Date.now().toString(), is_active: true, created_at: new Date().toISOString() };
+      return newUser as T;
+    }
+    // Return current admin user as sole user
+    const saved = loadAuthFromStorage("admin");
+    if (saved?.user) {
+      if (trimmedPath === `/users/${saved.user.id}`) return saved.user as T;
+      return [saved.user] as T;
+    }
+    return [] as T;
+  }
+  if (trimmedPath.startsWith("/dashboard/stats")) {
+    try {
+      return await gradioPredict<T>("gr_health", []) as T;
+    } catch {
+      return { total_products: 0, total_orders: 0, total_users: 1, total_categories: 0, total_revenue: 0, pending_orders: 0 } as T;
+    }
+  }
+  if (trimmedPath.startsWith("/settings")) {
+    return [
+      { key: "store_name", value: "API Template" },
+      { key: "store_phone", value: "" },
+      { key: "currency", value: "LAK" },
+      { key: "tax_percent", value: "7" },
+      { key: "store_logo", value: "" },
+    ] as T;
+  }
+  if (trimmedPath.startsWith("/cart")) {
+    return [] as T;
+  }
+  if (trimmedPath.startsWith("/quotations")) {
+    if (method === "POST") {
+      return { id: "prod-only", quotation_number: "PROD-QT", grand_total: 0, status: "draft", created_at: new Date().toISOString() } as T;
+    }
+    return [] as T;
   }
 
   throw new Error(`Unknown endpoint: ${path}`);
 }
 
+// ── Auth API functions ──
 export async function login(email: string, password: string): Promise<AuthResponse> {
   const data = await api<AuthResponse>("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
-  if (isClient()) {
+  if (!IS_PRODUCTION && isClient()) {
     currentUser = data.user;
     emitUserAuthChange(data.user);
   }
@@ -256,7 +368,7 @@ export async function adminLogin(email: string, password: string): Promise<AuthR
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
-  if (isClient()) {
+  if (!IS_PRODUCTION && isClient()) {
     currentAdmin = data.user;
     emitAdminAuthChange(data.user);
   }
@@ -268,7 +380,7 @@ export async function register(email: string, password: string, fullName: string
     method: "POST",
     body: JSON.stringify({ email, password, full_name: fullName, phone }),
   });
-  if (isClient()) {
+  if (!IS_PRODUCTION && isClient()) {
     currentUser = data.user;
     emitUserAuthChange(data.user);
   }
@@ -300,6 +412,10 @@ export function adminLogout() {
 
 export function getUser(userType: UserType = "user"): User | null {
   if (!isClient()) return null;
+  if (IS_PRODUCTION) {
+    const saved = loadAuthFromStorage(userType);
+    return saved?.user || null;
+  }
   return userType === "admin" ? currentAdmin : currentUser;
 }
 
@@ -313,6 +429,9 @@ export function setUser(user: User | null, userType: UserType = "user") {
 
 export function isAuthenticated(_userType: UserType = "user"): boolean {
   if (!isClient()) return false;
+  if (IS_PRODUCTION) {
+    return !!loadAuthFromStorage(_userType);
+  }
   return _userType === "admin" ? currentAdmin !== null : currentUser !== null;
 }
 
@@ -325,7 +444,7 @@ export async function updateProfile(data: { full_name?: string; phone?: string; 
     method: "PUT",
     body: JSON.stringify(data),
   }, "user");
-  if (isClient()) {
+  if (!IS_PRODUCTION && isClient()) {
     currentUser = updated;
     emitUserAuthChange(updated);
   }

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart, Loader2 } from "lucide-react";
-import { getApiBase } from "@/services/api";
+import { api, getApiBase } from "@/services/api";
 
 interface Product {
   id: string;
@@ -15,7 +15,17 @@ interface Product {
   is_active: boolean;
 }
 
+const IS_PRODUCTION = import.meta.env.MODE === "production" || (typeof window !== "undefined" && window.location.hostname !== "localhost");
+
 async function loader() {
+  if (IS_PRODUCTION) {
+    try {
+      const products = await api<Product[]>("/products");
+      return { products };
+    } catch {
+      return { products: [] as Product[] };
+    }
+  }
   const base = getApiBase();
   try {
     const res = await fetch(`${base}/products`);
