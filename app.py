@@ -7,7 +7,7 @@ import gradio as gr
 import spaces
 from starlette.middleware import Middleware
 from starlette.types import ASGIApp, Scope, Receive, Send
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import Response
 import bcrypt
@@ -268,6 +268,51 @@ if __name__ == "__main__":
     @app.post("/api/v1/admin/logout")
     def api_logout():
         return {"message": "logged out"}
+
+    def _dump_sql() -> str:
+        conn = get_db()
+        lines = []
+        for line in conn.iterdump():
+            lines.append(line)
+        conn.close()
+        return "\n".join(lines)
+
+    @app.get("/api/v1/admin/export")
+    def api_admin_export(request: Request):
+        user = get_current_user(_bearer_token(request))
+        if user["role"] not in ("admin", "superadmin"):
+            raise HTTPException(403, "admin required")
+        content = _dump_sql()
+        return Response(content=content, media_type="application/sql",
+                        headers={"Content-Disposition": "attachment; filename=export.sql"})
+
+    @app.post("/api/v1/admin/backup")
+    def api_admin_backup(request: Request):
+        user = get_current_user(_bearer_token(request))
+        if user["role"] not in ("admin", "superadmin"):
+            raise HTTPException(403, "admin required")
+        content = _dump_sql()
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        return Response(content=content, media_type="application/sql",
+                        headers={"Content-Disposition": f"attachment; filename=backup_{ts}.sql"})
+
+    @app.post("/api/v1/admin/import")
+    def api_admin_import(request: Request, file: UploadFile = File(...)):
+        user = get_current_user(_bearer_token(request))
+        if user["role"] not in ("admin", "superadmin"):
+            raise HTTPException(403, "admin required")
+        content = file.file.read().decode("utf-8")
+        statements = [s.strip() for s in content.split(";") if s.strip()]
+        executed = 0; failed = 0
+        conn = get_db()
+        for stmt in statements:
+            try:
+                conn.execute(stmt)
+                executed += 1
+            except Exception:
+                failed += 1
+        conn.commit(); conn.close()
+        return {"message": f"Import: {executed} executed, {failed} failed.", "executed": executed, "failed": failed}
 
     @app.get("/api/v1/products")
     def api_products():
