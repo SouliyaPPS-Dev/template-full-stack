@@ -8,7 +8,6 @@ import spaces
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
-from fastapi.middleware.cors import CORSMiddleware
 import bcrypt
 from jose import jwt
 from pydantic import BaseModel
@@ -179,7 +178,6 @@ if __name__ == "__main__":
 
     # Get Gradio's internal FastAPI app and add our routes to it
     app: FastAPI = demo.app
-    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
     # ── Manual Gradio protocol ──
     _event_results: dict[str, Any] = {}
