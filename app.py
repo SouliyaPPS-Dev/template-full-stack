@@ -292,11 +292,12 @@ def rest_logout():
 async def rest_catch_all(path: str):
     raise HTTPException(404, "endpoint not found")
 
+# ── Init DB on startup ──
+@app.on_event("startup")
+async def _startup():
+    init_db()
+
 # ── Serve SPA (must be last, after all API routes) ──
 dist = Path("dist")
 if dist.is_dir():
     app.mount("/", StaticFiles(directory="dist", html=True), name="spa")
-
-if __name__ == "__main__":
-    init_db()
-    uvicorn.run(app, host="0.0.0.0", port=7860, log_level="info")

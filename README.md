@@ -3,8 +3,7 @@ title: Template
 emoji: 🏃
 colorFrom: red
 colorTo: green
-sdk: gradio
-sdk_version: 5.23.0
+sdk: docker
 python_version: '3.12'
 app_file: app.py
 pinned: false
