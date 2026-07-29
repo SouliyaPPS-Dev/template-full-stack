@@ -122,6 +122,7 @@ def db_orders():
     return [dict(r) for r in rows]
 
 # ── Gradio functions ──
+@spaces.GPU
 def gr_health():
     return db_health()
 
