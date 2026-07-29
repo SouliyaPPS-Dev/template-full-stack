@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Any
 
 import gradio as gr
+import spaces
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
@@ -89,6 +90,7 @@ def _make_sse(result: Any) -> str:
     outer = json.dumps([inner])
     return f"event: complete\ndata: {outer}\n\n"
 
+@spaces.GPU
 def gr_health():
     conn = get_db()
     u = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
