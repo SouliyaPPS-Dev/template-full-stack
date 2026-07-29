@@ -100,6 +100,32 @@ if (isClient()) {
   if (savedUser) currentUser = savedUser.user;
 }
 
+// ── Token refresh (auto-renew on 401) ──
+let _refreshPromise: Promise<string | null> | null = null;
+
+async function _doRefresh(userType: UserType): Promise<string | null> {
+  if (_refreshPromise) return _refreshPromise;
+  _refreshPromise = (async () => {
+    try {
+      const saved = loadAuthFromStorage(userType);
+      if (!saved?.token) return null;
+      const res = await fetch(`${API_BASE}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${saved.token}` },
+      });
+      if (!res.ok) { clearAuthFromStorage(userType); return null; }
+      const data = await res.json();
+      if (data.access_token) {
+        saveAuthToStorage(data.access_token, saved.user, userType);
+        return data.access_token;
+      }
+      return null;
+    } catch { return null; }
+    finally { _refreshPromise = null; }
+  })();
+  return _refreshPromise;
+}
+
 // ── Gradio 5.x API caller (for HF Spaces production) ──
 async function gradioPredict<T>(apiName: string, data: unknown[] = []): Promise<T> {
   const res = await fetch(`${API_BASE}/_call/${apiName}`, {
@@ -177,14 +203,19 @@ export async function api<T>(path: string, options?: RequestInit, _userType: Use
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
-  if (res.status === 401) {
-    if (_userType === "admin") {
-      currentAdmin = null;
-      emitAdminAuthChange(null);
-    } else {
-      currentUser = null;
-      emitUserAuthChange(null);
+  if (res.status === 401 && path !== "/auth/refresh") {
+    const newToken = await _doRefresh(_userType);
+    if (newToken) {
+      headers["Authorization"] = `Bearer ${newToken}`;
+      const retryRes = await fetch(`${API_BASE}${path}`, { ...options, headers });
+      if (retryRes.ok) {
+        const text = await retryRes.text();
+        if (!text.startsWith("<!")) return JSON.parse(text) as T;
+      }
     }
+    clearAuthFromStorage(_userType);
+    if (_userType === "admin") { currentAdmin = null; emitAdminAuthChange(null); }
+    else { currentUser = null; emitUserAuthChange(null); }
     throw new Error("Unauthorized");
   }
 
@@ -268,7 +299,14 @@ async function gradioApiCaller<T>(path: string, options?: RequestInit, _userType
     return authRes as T;
   }
 
-  if (res.status === 401) {
+  if (res.status === 401 && path !== "/auth/refresh") {
+    const newToken = await _doRefresh(_userType);
+    if (newToken) {
+      headers["Authorization"] = `Bearer ${newToken}`;
+      const retryRes = await fetch(`${API_BASE}${path}`, { ...options, headers });
+      if (retryRes.ok) return retryRes.json() as Promise<T>;
+    }
+    clearAuthFromStorage(_userType);
     if (_userType === "admin") { currentAdmin = null; emitAdminAuthChange(null); }
     else { currentUser = null; emitUserAuthChange(null); }
     throw new Error("Unauthorized");
