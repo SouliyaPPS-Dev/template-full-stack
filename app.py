@@ -147,27 +147,12 @@ def gr_orders():
     return [dict(r) for r in rows]
 
 # ── Gradio Blocks UI ──
-with gr.Blocks(title="Template", theme=gr.themes.Soft()) as demo:
-    gr.Markdown("# Template\nAPI Console")
-    with gr.Tabs():
-        with gr.Tab("Health"):
-            btn1 = gr.Button("Check Health")
-            out1 = gr.JSON(label="Result")
-            btn1.click(fn=gr_health, outputs=out1)
-        with gr.Tab("Login"):
-            inp_e = gr.Textbox(label="Email", placeholder="admin@template.com")
-            inp_p = gr.Textbox(label="Password", type="password", placeholder="admin123")
-            btn2 = gr.Button("Login", variant="primary")
-            out2 = gr.JSON(label="Result")
-            btn2.click(fn=gr_login, inputs=[inp_e, inp_p], outputs=out2)
-        with gr.Tab("Products"):
-            btn3 = gr.Button("Load Products")
-            out3 = gr.JSON(label="Products")
-            btn3.click(fn=gr_products, outputs=out3)
-        with gr.Tab("Orders"):
-            btn4 = gr.Button("Load Orders")
-            out4 = gr.JSON(label="Orders")
-            btn4.click(fn=gr_orders, outputs=out4)
+# Embed the full SPA as the Gradio UI
+with gr.Blocks(title="Template", theme=gr.themes.Soft(), css="*{margin:0;padding:0}") as demo:
+    if dist.is_dir() and (dist / "index.html").exists():
+        gr.HTML((dist / "index.html").read_text())
+    else:
+        gr.Markdown("# Template\nFull-Stack Web + API")
 
 if __name__ == "__main__":
     init_db()
@@ -301,40 +286,46 @@ if __name__ == "__main__":
     def api_settings():
         return {"store_name": "Template", "currency": "LAK", "tax_percent": 0}
 
-    # ── Serve SPA at root / (router-level interception) ──
+    # ── Serve SPA at root / (router wrapper interception) ──
     MIME = {
         ".js": "application/javascript", ".css": "text/css",
         ".svg": "image/svg+xml", ".ico": "image/x-icon",
         ".webmanifest": "application/manifest+json", ".html": "text/html",
     }
     API_PREFIXES = ("/api/", "/gradio_api/", "/theme.css", "/static/", "/file=")
-    _original_router = demo.app.router
+    _orig_router = demo.app.router
 
-    class _SPARouter:
+    class _SPARouterWrapper:
+        def __init__(self, original):
+            object.__setattr__(self, "_original", original)
+            object.__setattr__(self, "_mime", MIME)
+            object.__setattr__(self, "_api_prefixes", API_PREFIXES)
+        def __getattr__(self, name):
+            return getattr(object.__getattribute__(self, "_original"), name)
+        def __setattr__(self, name, value):
+            setattr(object.__getattribute__(self, "_original"), name, value)
         async def __call__(self, scope, receive, send):
             if scope["type"] == "http" and scope.get("method") == "GET":
                 path = scope.get("path", "/")
                 rel = path.lstrip("/")
-                filepath = dist / rel if rel else dist / "index.html"
-                if filepath.exists() and filepath.is_file():
-                    body = filepath.read_bytes()
-                    ct = MIME.get(filepath.suffix, "application/octet-stream")
-                    await send({"type": "http.response.start", "status": 200, "headers": [
-                        (b"content-type", ct.encode()), (b"content-length", str(len(body)).encode()),
-                    ]})
+                fp = (dist / rel) if rel else (dist / "index.html")
+                if fp.exists() and fp.is_file():
+                    body = fp.read_bytes()
+                    ct = object.__getattribute__(self, "_mime").get(fp.suffix, "application/octet-stream")
+                    headers = [(b"content-type", ct.encode()), (b"content-length", str(len(body)).encode())]
+                    await send({"type": "http.response.start", "status": 200, "headers": headers})
                     await send({"type": "http.response.body", "body": body})
                     return
-                if not path.startswith(API_PREFIXES):
+                if not path.startswith(object.__getattribute__(self, "_api_prefixes")):
                     index = dist / "index.html"
                     if index.exists():
                         body = index.read_bytes()
-                        await send({"type": "http.response.start", "status": 200, "headers": [
-                            (b"content-type", b"text/html"), (b"content-length", str(len(body)).encode()),
-                        ]})
+                        headers = [(b"content-type", b"text/html"), (b"content-length", str(len(body)).encode())]
+                        await send({"type": "http.response.start", "status": 200, "headers": headers})
                         await send({"type": "http.response.body", "body": body})
                         return
-            await _original_router(scope, receive, send)
+            await object.__getattribute__(self, "_original")(scope, receive, send)
 
-    demo.app.router = _SPARouter()
+    demo.app.router = _SPARouterWrapper(_orig_router)
 
     demo.block_thread()
