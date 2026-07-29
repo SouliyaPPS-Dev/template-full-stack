@@ -288,9 +288,10 @@ if __name__ == "__main__":
         user = get_current_user(_bearer_token(request))
         if user["role"] not in ("admin", "superadmin"): raise HTTPException(403, "admin required")
         conn = get_db()
-        result = {"users": conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
-                  "products": conn.execute("SELECT COUNT(*) FROM products WHERE deleted_at IS NULL").fetchone()[0],
-                  "orders": conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0]}
+        result = {"total_users": conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
+                  "total_products": conn.execute("SELECT COUNT(*) FROM products WHERE deleted_at IS NULL").fetchone()[0],
+                  "total_orders": conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0],
+                  "total_categories": 0, "total_revenue": 0, "pending_orders": 0}
         conn.close()
         return result
 
