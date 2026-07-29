@@ -3,14 +3,11 @@ const IS_PRODUCTION = import.meta.env.MODE === "production" || API_BASE.includes
 
 function getAdminToken(): string | null {
   if (typeof window === "undefined") return null;
-  if (IS_PRODUCTION) {
-    try {
-      const saved = localStorage.getItem("auth_admin");
-      if (saved) return JSON.parse(saved).token;
-    } catch {}
-    return null;
-  }
-  return localStorage.getItem("admin_token");
+  try {
+    const saved = localStorage.getItem("auth_admin");
+    if (saved) return JSON.parse(saved).token;
+  } catch {}
+  return null;
 }
 
 export async function backupDatabase(): Promise<void> {
