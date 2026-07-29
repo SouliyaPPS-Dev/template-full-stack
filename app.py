@@ -308,10 +308,11 @@ if __name__ == "__main__":
         ".webmanifest": "application/manifest+json", ".html": "text/html",
     }
 
-    # Remove Gradio's root route so SPA can take over
-    from starlette.routing import Route
+    # Remove Gradio's root route + /assets mount so SPA can take over
+    from starlette.routing import Route, Mount
     app.router.routes = [r for r in app.router.routes if not (
-        isinstance(r, Route) and r.path in ("/", "") and "GET" in r.methods
+        (isinstance(r, Route) and r.path in ("/", "") and "GET" in r.methods) or
+        (isinstance(r, Mount) and r.path == "/assets")
     )]
 
     @app.get("/{path:path}")
