@@ -83,6 +83,12 @@ def decode_token(token: str) -> dict | None:
     except Exception:
         return None
 
+def decode_token_no_expire(token: str) -> dict | None:
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM], options={"verify_exp": False})
+    except Exception:
+        return None
+
 def get_current_user(token: str) -> dict:
     payload = decode_token(token)
     if not payload:
@@ -243,6 +249,20 @@ if __name__ == "__main__":
     def api_me(request: Request):
         user = get_current_user(_bearer_token(request))
         return user
+
+    @app.post("/api/v1/auth/refresh")
+    def api_refresh(request: Request):
+        token = _bearer_token(request)
+        payload = decode_token_no_expire(token)
+        if not payload:
+            raise HTTPException(401, "invalid token")
+        conn = get_db()
+        user = conn.execute("SELECT * FROM users WHERE id=?", (payload["sub"],)).fetchone()
+        conn.close()
+        if not user or not user["is_active"]:
+            raise HTTPException(401, "user not found or inactive")
+        new_token = create_token(user["id"], user["role"])
+        return {"access_token": new_token, "token_type": "bearer"}
 
     @app.post("/api/v1/auth/logout")
     @app.post("/api/v1/admin/logout")
