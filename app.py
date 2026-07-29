@@ -9,13 +9,15 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 import bcrypt
-from jose import jwt, JWTError
+from jose import jwt
+from pydantic import BaseModel
 
-DB_PATH = "/data/db.sqlite"
-JWT_SECRET = os.environ.get("JWT_SECRET", "change-me-in-production")
+# ── Config ──
+DB_PATH = "/data/app.db"
+JWT_SECRET = os.environ.get("JWT_SECRET", "super-secret-key-change-in-production")
 JWT_ALGORITHM = "HS256"
+JWT_EXPIRE_HOURS = 24 * 7
 
 # ── Database ──
 def get_db():
@@ -48,48 +50,38 @@ def init_db():
         );
     """)
     if conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
-        hashed = bcrypt.hashpw(b"admin123", bcrypt.gensalt()).decode()
-        conn.execute("INSERT INTO users (id,email,password_hash,full_name,role) VALUES (?,?,?,?,?)",
-                     (str(uuid.uuid4()), "admin@template.com", hashed, "Admin", "admin"))
+        conn.execute("INSERT INTO users (id,email,password_hash,full_name,role,is_active) VALUES (?,?,?,?,?,?)",
+            (str(uuid.uuid4()), "admin@template.com",
+             bcrypt.hashpw(b"admin123", bcrypt.gensalt()).decode(), "Admin", "admin", 1))
     if conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0] == 0:
-        row = conn.execute("SELECT id FROM users LIMIT 1").fetchone()
-        uid = row["id"]
+        row = conn.execute("SELECT id FROM users ORDER BY created_at ASC LIMIT 1").fetchone()
+        uid = row["id"] if row else str(uuid.uuid4())
         for i in range(5):
-            statuses = ["pending","confirmed","processing","shipped","delivered"]
+            statuses = ["pending", "confirmed", "processing", "shipped", "delivered"]
             conn.execute(
                 "INSERT INTO orders (id,order_number,user_id,status,payment_status,grand_total) VALUES (?,?,?,?,?,?)",
                 (str(uuid.uuid4()), f"ORD-{int(time.time()*1000)}-{i}", uid,
-                 statuses[i], "paid" if i%2==0 else "unpaid", round(50+i*30.5,2)))
+                 statuses[i % len(statuses)], "paid" if i % 2 == 0 else "unpaid", round(50 + i * 30.5, 2)))
     conn.commit(); conn.close()
 
-# ── Auth helpers ──
+# ── Token helpers ──
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+
 def create_token(user_id: str, role: str) -> str:
-    exp = datetime.now(timezone.utc) + timedelta(hours=168)
+    exp = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRE_HOURS)
     return jwt.encode({"sub": user_id, "role": role, "exp": exp}, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 def decode_token(token: str) -> dict | None:
-    try: return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-    except JWTError: return None
-
-def require_auth(authorization: str = "") -> dict:
-    token = authorization.replace("Bearer ", "") if authorization else ""
-    if not token: raise HTTPException(401, "unauthorized")
-    payload = decode_token(token)
-    if not payload: raise HTTPException(401, "invalid token")
-    conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE id=?", (payload["sub"],)).fetchone()
-    conn.close()
-    if not user: raise HTTPException(401, "user not found")
-    return dict(user)
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except Exception:
+        return None
 
 # ── Gradio functions ──
-_event_results: dict[str, Any] = {}
-
-def _make_sse(result: Any) -> str:
-    inner = json.dumps(result, default=str)
-    outer = json.dumps([inner])
-    return f"event: complete\ndata: {outer}\n\n"
-
 @spaces.GPU
 def gr_health():
     conn = get_db()
@@ -103,7 +95,7 @@ def gr_login(email: str, password: str):
     conn = get_db()
     user = conn.execute("SELECT * FROM users WHERE email=?", (email.lower(),)).fetchone()
     conn.close()
-    if not user or not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
+    if not user or not verify_password(password, user["password_hash"]):
         return {"error": "invalid credentials"}
     token = create_token(user["id"], user["role"])
     return {"access_token": token, "token_type": "bearer", "user": {"id": user["id"], "email": user["email"], "full_name": user["full_name"], "phone": user.get("phone",""), "role": user["role"], "is_active": bool(user["is_active"])}}
@@ -114,7 +106,7 @@ def gr_register(email: str, password: str, full_name: str, phone: str = ""):
         conn.close()
         return {"error": "email already registered"}
     uid = str(uuid.uuid4())
-    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    hashed = hash_password(password)
     conn.execute("INSERT INTO users (id,email,password_hash,full_name,phone,role) VALUES (?,?,?,?,?,?)",
                  (uid, email.lower(), hashed, full_name, phone, "user"))
     conn.commit(); conn.close()
@@ -133,20 +125,21 @@ def gr_orders():
     conn.close()
     return [dict(r) for r in rows]
 
-# ── Gradio interface (for HF detection + manual testing) ──
+# ── Gradio Blocks UI ──
 with gr.Blocks(title="Template", theme=gr.themes.Soft()) as demo:
-    gr.Markdown("# Template Full Stack\n**SPA:** `/` • **REST API:** `/api/v1/*` • **Gradio API:** `/gradio_api/call/*`")
+    gr.Markdown("# Template\nFull-Stack Web + API\n\n*REST API: `/api/v1/*`*")
+
     with gr.Tabs():
         with gr.Tab("Health"):
-            btn = gr.Button("Check")
-            out = gr.JSON(label="Result")
-            btn.click(fn=gr_health, outputs=out)
+            btn1 = gr.Button("Check Health")
+            out1 = gr.JSON(label="Result")
+            btn1.click(fn=gr_health, outputs=out1)
         with gr.Tab("Login"):
-            e = gr.Textbox(label="Email", placeholder="admin@template.com")
-            p = gr.Textbox(label="Password", type="password")
+            inp_e = gr.Textbox(label="Email", placeholder="admin@template.com")
+            inp_p = gr.Textbox(label="Password", type="password", placeholder="admin123")
             btn2 = gr.Button("Login", variant="primary")
             out2 = gr.JSON(label="Result")
-            btn2.click(fn=gr_login, inputs=[e, p], outputs=out2)
+            btn2.click(fn=gr_login, inputs=[inp_e, inp_p], outputs=out2)
         with gr.Tab("Products"):
             btn3 = gr.Button("Load Products")
             out3 = gr.JSON(label="Products")
@@ -160,10 +153,18 @@ with gr.Blocks(title="Template", theme=gr.themes.Soft()) as demo:
 app = FastAPI(title="Template")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-# Mount Gradio at subpath
+# Must call queue() before mount_gradio_app for @spaces.GPU detection
+demo.queue()
 app = gr.mount_gradio_app(app, demo, path="/gradio")
 
-# ── Manual Gradio protocol (replicates Gradio's API structure) ──
+# ── Manual Gradio protocol (frontend calls /gradio_api/call/*) ──
+_event_results: dict[str, Any] = {}
+
+def _make_sse(result: Any) -> str:
+    inner = json.dumps(result, default=str)
+    outer = json.dumps([inner])
+    return f"event: complete\ndata: {outer}\n\n"
+
 @app.post("/gradio_api/call/{fn_name}")
 async def gradio_call(fn_name: str, request: Request):
     event_id = str(uuid.uuid4())
@@ -196,69 +197,102 @@ class ProductReq(BaseModel): name: str; slug: str; sku: str = ""; category_id: s
 
 @app.get("/api/v1/health")
 def rest_health():
-    return _make_json(gr_health())
+    conn = get_db()
+    u = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    p = conn.execute("SELECT COUNT(*) FROM products WHERE deleted_at IS NULL").fetchone()[0]
+    o = conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0]
+    conn.close()
+    return {"status":"ok","users":u,"products":p,"orders":o}
 
-def _make_json(data):
-    return data
+@app.post("/api/v1/auth/register")
+def api_register(data: RegisterReq):
+    if len(data.password) < 8:
+        raise HTTPException(400, "password must be 8+ characters")
+    conn = get_db()
+    if conn.execute("SELECT 1 FROM users WHERE email=?", (data.email.lower(),)).fetchone():
+        conn.close(); raise HTTPException(409, "email already registered")
+    uid = str(uuid.uuid4())
+    hashed = hash_password(data.password)
+    conn.execute("INSERT INTO users (id,email,password_hash,full_name,phone,role,is_active) VALUES (?,?,?,?,?,?,?)",
+        (uid, data.email.lower(), hashed, data.full_name, data.phone, "user", 1))
+    conn.commit(); conn.close()
+    token = create_token(uid, "user")
+    return {"access_token": token, "token_type": "bearer", "user": {"id": uid, "email": data.email.lower(), "full_name": data.full_name, "role": "user", "is_active": True}}
 
 @app.post("/api/v1/auth/login")
-def rest_login(data: LoginReq): return gr_login(data.email, data.password)
 @app.post("/api/v1/admin/login")
-def rest_admin_login(data: LoginReq):
-    result = gr_login(data.email, data.password)
-    if "access_token" not in result: raise HTTPException(401, "invalid credentials")
-    return result
-@app.post("/api/v1/auth/register")
-def rest_register(data: RegisterReq): return gr_register(data.email, data.password, data.full_name, data.phone)
-@app.get("/api/v1/auth/me")
-def rest_me(authorization: str = ""):
-    user = require_auth(authorization)
-    return {"id": user["id"], "email": user["email"], "full_name": user["full_name"], "phone": user.get("phone",""), "role": user["role"], "is_active": bool(user["is_active"])}
-@app.put("/api/v1/auth/me")
-async def rest_update_me(request: Request, authorization: str = ""):
-    user = require_auth(authorization)
-    body = await request.json()
-    fn = body.get("full_name", user["full_name"])
-    ph = body.get("phone", user.get("phone",""))
+def api_login(data: LoginReq):
     conn = get_db()
-    conn.execute("UPDATE users SET full_name=?, phone=?, updated_at=datetime('now') WHERE id=?", (fn, ph, user["id"]))
-    conn.commit()
-    updated = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
+    user = conn.execute("SELECT * FROM users WHERE email=?", (data.email.lower(),)).fetchone()
     conn.close()
-    return dict(updated)
-@app.get("/api/v1/products")
-def rest_list_products(): return gr_products()
-@app.post("/api/v1/products")
-def rest_create_product(data: ProductReq, authorization: str = ""):
-    user = require_auth(authorization)
-    pid = str(uuid.uuid4())
+    if not user or not verify_password(data.password, user["password_hash"]):
+        raise HTTPException(401, "invalid credentials")
+    token = create_token(user["id"], user["role"])
+    return {"access_token": token, "token_type": "bearer", "user": {"id": user["id"], "email": user["email"], "full_name": user["full_name"], "phone": user.get("phone",""), "role": user["role"], "is_active": bool(user["is_active"])}}
+
+def get_current_user(token: str) -> dict:
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(401, "invalid token")
     conn = get_db()
-    conn.execute("INSERT INTO products (id,name,slug,sku,category_id,selling_price,cost_price,stock,images) VALUES (?,?,?,?,?,?,?,?,?)",
-                 (pid, data.name, data.slug, data.sku, data.category_id, data.selling_price, data.cost_price, data.stock, json.dumps(data.images)))
-    conn.commit(); conn.close()
-    return {"id": pid, "name": data.name, "slug": data.slug, "selling_price": data.selling_price, "stock": data.stock}
-@app.get("/api/v1/orders")
-def rest_list_orders(authorization: str = ""):
-    user = require_auth(authorization)
-    return gr_orders()
+    user = conn.execute("SELECT * FROM users WHERE id=?", (payload["sub"],)).fetchone()
+    conn.close()
+    if not user:
+        raise HTTPException(401, "user not found")
+    return dict(user)
+
+def _bearer_token(request: Request) -> str:
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(401, "unauthorized")
+    return auth.split(" ", 1)[1]
+
+@app.get("/api/v1/auth/me")
+def api_me(request: Request):
+    user = get_current_user(_bearer_token(request))
+    return {"id": user["id"], "email": user["email"], "full_name": user["full_name"], "phone": user.get("phone",""), "role": user["role"], "is_active": bool(user["is_active"])}
+
+@app.post("/api/v1/auth/logout")
+@app.post("/api/v1/admin/logout")
+def api_logout():
+    return {"message": "logged out"}
+
+@app.get("/api/v1/products")
+def api_products():
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM products WHERE deleted_at IS NULL ORDER BY created_at DESC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+@app.get("/api/v1/categories")
+def api_categories():
+    return []
+
 @app.get("/api/v1/users")
-def rest_list_users(authorization: str = ""):
-    user = require_auth(authorization)
+def api_users(request: Request):
+    user = get_current_user(_bearer_token(request))
+    if user["role"] not in ("admin", "superadmin"):
+        raise HTTPException(403, "admin required")
     conn = get_db()
     rows = conn.execute("SELECT id,email,full_name,phone,role,is_active,created_at FROM users ORDER BY created_at DESC").fetchall()
     conn.close()
-    return [dict(r) for r in rows]
+    return [{"id": r["id"], "email": r["email"], "full_name": r["full_name"], "role": r["role"], "is_active": bool(r["is_active"])} for r in rows]
+
 @app.get("/api/v1/dashboard/stats")
-def rest_stats(authorization: str = ""):
-    user = require_auth(authorization)
-    return _make_json(gr_health())
+def api_stats(request: Request):
+    user = get_current_user(_bearer_token(request))
+    if user["role"] not in ("admin", "superadmin"):
+        raise HTTPException(403, "admin required")
+    conn = get_db()
+    result = {"users": conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
+              "products": conn.execute("SELECT COUNT(*) FROM products WHERE deleted_at IS NULL").fetchone()[0],
+              "orders": conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0]}
+    conn.close()
+    return result
+
 @app.get("/api/v1/settings")
-def rest_settings():
-    return {"store_name": "Template", "currency": "LAK", "tax_percent": 7}
-@app.post("/api/v1/auth/logout")
-@app.post("/api/v1/admin/logout")
-def rest_logout():
-    return {"message": "logged out"}
+def api_settings():
+    return {"store_name": "Template", "currency": "LAK", "tax_percent": 0}
 
 # ── Serve SPA (must be last) ──
 dist = Path("dist")
