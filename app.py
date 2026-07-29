@@ -81,6 +81,23 @@ def decode_token(token: str) -> dict | None:
     except Exception:
         return None
 
+def get_current_user(token: str) -> dict:
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(401, "invalid token")
+    conn = get_db()
+    user = conn.execute("SELECT * FROM users WHERE id=?", (payload["sub"],)).fetchone()
+    conn.close()
+    if not user:
+        raise HTTPException(401, "user not found")
+    return dict(user)
+
+def _bearer_token(request: Request) -> str:
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HTTPException(401, "unauthorized")
+    return auth.split(" ", 1)[1]
+
 # ── Gradio functions ──
 @spaces.GPU
 def gr_health():
@@ -127,9 +144,13 @@ def gr_orders():
 
 # ── Gradio Blocks UI ──
 with gr.Blocks(title="Template", theme=gr.themes.Soft()) as demo:
-    gr.Markdown("# Template\nFull-Stack Web + API\n\n*REST API: `/api/v1/*`*")
+    gr.Markdown("# Template\nFull-Stack Web + API\n\n**Web App:** `/spa/` | **REST API:** `/api/v1/*`")
 
     with gr.Tabs():
+        with gr.Tab("Web App"):
+            gr.Markdown("### Launch the full web application")
+            gr.Markdown("[Open Web App →](/spa/)")
+            gr.HTML('<iframe src="/spa/" style="width:100%;height:80vh;border:none;border-radius:8px"></iframe>')
         with gr.Tab("Health"):
             btn1 = gr.Button("Check Health")
             out1 = gr.JSON(label="Result")
@@ -149,157 +170,165 @@ with gr.Blocks(title="Template", theme=gr.themes.Soft()) as demo:
             out4 = gr.JSON(label="Orders")
             btn4.click(fn=gr_orders, outputs=out4)
 
-# ── FastAPI app ──
-app = FastAPI(title="Template")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-
-# Must call queue() before mount_gradio_app for @spaces.GPU detection
-demo.queue()
-app = gr.mount_gradio_app(app, demo, path="/gradio")
-
-# ── Manual Gradio protocol (frontend calls /gradio_api/call/*) ──
-_event_results: dict[str, Any] = {}
-
-def _make_sse(result: Any) -> str:
-    inner = json.dumps(result, default=str)
-    outer = json.dumps([inner])
-    return f"event: complete\ndata: {outer}\n\n"
-
-@app.post("/gradio_api/call/{fn_name}")
-async def gradio_call(fn_name: str, request: Request):
-    event_id = str(uuid.uuid4())
-    body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {"data": []}
-    data = body.get("data", [])
-    try:
-        if fn_name == "gr_health": result = gr_health()
-        elif fn_name == "gr_login": result = gr_login(data[0] if len(data)>0 else "", data[1] if len(data)>1 else "")
-        elif fn_name == "gr_register": result = gr_register(data[0] if len(data)>0 else "", data[1] if len(data)>1 else "", data[2] if len(data)>2 else "", data[3] if len(data)>3 else "")
-        elif fn_name == "gr_products": result = gr_products()
-        elif fn_name == "gr_orders": result = gr_orders()
-        else: result = {"error": f"unknown: {fn_name}"}
-    except Exception as e:
-        result = {"error": str(e)}
-    _event_results[event_id] = result
-    return {"event_id": event_id}
-
-@app.get("/gradio_api/call/{fn_name}/{event_id}")
-async def gradio_result(fn_name: str, event_id: str):
-    result = _event_results.get(event_id)
-    if result is None:
-        raise HTTPException(404, "event not found or expired")
-    del _event_results[event_id]
-    return Response(content=_make_sse(result), media_type="text/event-stream")
-
-# ── REST API ──
-class LoginReq(BaseModel): email: str; password: str
-class RegisterReq(BaseModel): email: str; password: str; full_name: str; phone: str = ""
-class ProductReq(BaseModel): name: str; slug: str; sku: str = ""; category_id: str = ""; selling_price: float = 0; cost_price: float = 0; stock: int = 0; images: list[str] = []
-
-@app.get("/api/v1/health")
-def rest_health():
-    conn = get_db()
-    u = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-    p = conn.execute("SELECT COUNT(*) FROM products WHERE deleted_at IS NULL").fetchone()[0]
-    o = conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0]
-    conn.close()
-    return {"status":"ok","users":u,"products":p,"orders":o}
-
-@app.post("/api/v1/auth/register")
-def api_register(data: RegisterReq):
-    if len(data.password) < 8:
-        raise HTTPException(400, "password must be 8+ characters")
-    conn = get_db()
-    if conn.execute("SELECT 1 FROM users WHERE email=?", (data.email.lower(),)).fetchone():
-        conn.close(); raise HTTPException(409, "email already registered")
-    uid = str(uuid.uuid4())
-    hashed = hash_password(data.password)
-    conn.execute("INSERT INTO users (id,email,password_hash,full_name,phone,role,is_active) VALUES (?,?,?,?,?,?,?)",
-        (uid, data.email.lower(), hashed, data.full_name, data.phone, "user", 1))
-    conn.commit(); conn.close()
-    token = create_token(uid, "user")
-    return {"access_token": token, "token_type": "bearer", "user": {"id": uid, "email": data.email.lower(), "full_name": data.full_name, "role": "user", "is_active": True}}
-
-@app.post("/api/v1/auth/login")
-@app.post("/api/v1/admin/login")
-def api_login(data: LoginReq):
-    conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE email=?", (data.email.lower(),)).fetchone()
-    conn.close()
-    if not user or not verify_password(data.password, user["password_hash"]):
-        raise HTTPException(401, "invalid credentials")
-    token = create_token(user["id"], user["role"])
-    return {"access_token": token, "token_type": "bearer", "user": {"id": user["id"], "email": user["email"], "full_name": user["full_name"], "phone": user.get("phone",""), "role": user["role"], "is_active": bool(user["is_active"])}}
-
-def get_current_user(token: str) -> dict:
-    payload = decode_token(token)
-    if not payload:
-        raise HTTPException(401, "invalid token")
-    conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE id=?", (payload["sub"],)).fetchone()
-    conn.close()
-    if not user:
-        raise HTTPException(401, "user not found")
-    return dict(user)
-
-def _bearer_token(request: Request) -> str:
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
-        raise HTTPException(401, "unauthorized")
-    return auth.split(" ", 1)[1]
-
-@app.get("/api/v1/auth/me")
-def api_me(request: Request):
-    user = get_current_user(_bearer_token(request))
-    return {"id": user["id"], "email": user["email"], "full_name": user["full_name"], "phone": user.get("phone",""), "role": user["role"], "is_active": bool(user["is_active"])}
-
-@app.post("/api/v1/auth/logout")
-@app.post("/api/v1/admin/logout")
-def api_logout():
-    return {"message": "logged out"}
-
-@app.get("/api/v1/products")
-def api_products():
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM products WHERE deleted_at IS NULL ORDER BY created_at DESC").fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
-
-@app.get("/api/v1/categories")
-def api_categories():
-    return []
-
-@app.get("/api/v1/users")
-def api_users(request: Request):
-    user = get_current_user(_bearer_token(request))
-    if user["role"] not in ("admin", "superadmin"):
-        raise HTTPException(403, "admin required")
-    conn = get_db()
-    rows = conn.execute("SELECT id,email,full_name,phone,role,is_active,created_at FROM users ORDER BY created_at DESC").fetchall()
-    conn.close()
-    return [{"id": r["id"], "email": r["email"], "full_name": r["full_name"], "role": r["role"], "is_active": bool(r["is_active"])} for r in rows]
-
-@app.get("/api/v1/dashboard/stats")
-def api_stats(request: Request):
-    user = get_current_user(_bearer_token(request))
-    if user["role"] not in ("admin", "superadmin"):
-        raise HTTPException(403, "admin required")
-    conn = get_db()
-    result = {"users": conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
-              "products": conn.execute("SELECT COUNT(*) FROM products WHERE deleted_at IS NULL").fetchone()[0],
-              "orders": conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0]}
-    conn.close()
-    return result
-
-@app.get("/api/v1/settings")
-def api_settings():
-    return {"store_name": "Template", "currency": "LAK", "tax_percent": 0}
-
-# ── Serve SPA (must be last) ──
-dist = Path("dist")
-if dist.is_dir():
-    app.mount("/", StaticFiles(directory="dist", html=True), name="spa")
-
 if __name__ == "__main__":
     init_db()
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=7860, log_level="info")
+
+    # Launch Gradio (triggers @spaces.GPU detection)
+    demo.queue()
+    demo.launch(server_name="0.0.0.0", server_port=7860, prevent_thread_lock=True)
+
+    # Get Gradio's internal FastAPI app and add our routes to it
+    app: FastAPI = demo.app
+    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+    # ── Manual Gradio protocol ──
+    _event_results: dict[str, Any] = {}
+
+    def _make_sse(result: Any) -> str:
+        inner = json.dumps(result, default=str)
+        outer = json.dumps([inner])
+        return f"event: complete\ndata: {outer}\n\n"
+
+    @app.post("/gradio_api/call/{fn_name}")
+    async def gradio_call(fn_name: str, request: Request):
+        event_id = str(uuid.uuid4())
+        body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {"data": []}
+        data = body.get("data", [])
+        try:
+            if fn_name == "gr_health": result = gr_health()
+            elif fn_name == "gr_login": result = gr_login(data[0] if len(data)>0 else "", data[1] if len(data)>1 else "")
+            elif fn_name == "gr_register": result = gr_register(data[0] if len(data)>0 else "", data[1] if len(data)>1 else "", data[2] if len(data)>2 else "", data[3] if len(data)>3 else "")
+            elif fn_name == "gr_products": result = gr_products()
+            elif fn_name == "gr_orders": result = gr_orders()
+            else: result = {"error": f"unknown: {fn_name}"}
+        except Exception as e:
+            result = {"error": str(e)}
+        _event_results[event_id] = result
+        return {"event_id": event_id}
+
+    @app.get("/gradio_api/call/{fn_name}/{event_id}")
+    async def gradio_result(fn_name: str, event_id: str):
+        result = _event_results.get(event_id)
+        if result is None:
+            raise HTTPException(404, "event not found or expired")
+        del _event_results[event_id]
+        return Response(content=_make_sse(result), media_type="text/event-stream")
+
+    # ── REST API ──
+    class LoginReq(BaseModel): email: str; password: str
+    class RegisterReq(BaseModel): email: str; password: str; full_name: str; phone: str = ""
+    class ProductReq(BaseModel): name: str; slug: str; sku: str = ""; category_id: str = ""; selling_price: float = 0; cost_price: float = 0; stock: int = 0; images: list[str] = []
+
+    @app.get("/api/v1/health")
+    def rest_health():
+        return gr_health()
+
+    @app.post("/api/v1/auth/register")
+    def api_register(data: RegisterReq):
+        if len(data.password) < 8:
+            raise HTTPException(400, "password must be 8+ characters")
+        conn = get_db()
+        if conn.execute("SELECT 1 FROM users WHERE email=?", (data.email.lower(),)).fetchone():
+            conn.close(); raise HTTPException(409, "email already registered")
+        uid = str(uuid.uuid4())
+        hashed = hash_password(data.password)
+        conn.execute("INSERT INTO users (id,email,password_hash,full_name,phone,role,is_active) VALUES (?,?,?,?,?,?,?)",
+            (uid, data.email.lower(), hashed, data.full_name, data.phone, "user", 1))
+        conn.commit(); conn.close()
+        token = create_token(uid, "user")
+        return {"access_token": token, "token_type": "bearer", "user": {"id": uid, "email": data.email.lower(), "full_name": data.full_name, "role": "user", "is_active": True}}
+
+    @app.post("/api/v1/auth/login")
+    @app.post("/api/v1/admin/login")
+    def api_login(data: LoginReq):
+        conn = get_db()
+        user = conn.execute("SELECT * FROM users WHERE email=?", (data.email.lower(),)).fetchone()
+        conn.close()
+        if not user or not verify_password(data.password, user["password_hash"]):
+            raise HTTPException(401, "invalid credentials")
+        token = create_token(user["id"], user["role"])
+        return {"access_token": token, "token_type": "bearer", "user": {"id": user["id"], "email": user["email"], "full_name": user["full_name"], "phone": user.get("phone",""), "role": user["role"], "is_active": bool(user["is_active"])}}
+
+    @app.get("/api/v1/auth/me")
+    def api_me(request: Request):
+        user = get_current_user(_bearer_token(request))
+        return {"id": user["id"], "email": user["email"], "full_name": user["full_name"], "phone": user.get("phone",""), "role": user["role"], "is_active": bool(user["is_active"])}
+
+    @app.post("/api/v1/auth/logout")
+    @app.post("/api/v1/admin/logout")
+    def api_logout():
+        return {"message": "logged out"}
+
+    @app.get("/api/v1/products")
+    def api_products():
+        return gr_products()
+
+    @app.post("/api/v1/products")
+    def api_create_product(data: ProductReq, request: Request):
+        user = get_current_user(_bearer_token(request))
+        if user["role"] not in ("admin", "superadmin"):
+            raise HTTPException(403, "admin required")
+        pid = str(uuid.uuid4())
+        conn = get_db()
+        conn.execute("INSERT INTO products (id,name,slug,sku,category_id,selling_price,cost_price,stock,images,is_active) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (pid, data.name, data.slug, data.sku, data.category_id, data.selling_price, data.cost_price, data.stock, json.dumps(data.images), 1))
+        conn.commit(); conn.close()
+        return {"id": pid, "name": data.name, "slug": data.slug, "selling_price": data.selling_price, "stock": data.stock}
+
+    @app.get("/api/v1/categories")
+    def api_categories():
+        return []
+
+    @app.get("/api/v1/orders")
+    def api_orders(request: Request):
+        get_current_user(_bearer_token(request))
+        conn = get_db()
+        rows = conn.execute("SELECT * FROM orders ORDER BY created_at DESC").fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    @app.get("/api/v1/users")
+    def api_users(request: Request):
+        user = get_current_user(_bearer_token(request))
+        if user["role"] not in ("admin", "superadmin"):
+            raise HTTPException(403, "admin required")
+        conn = get_db()
+        rows = conn.execute("SELECT id,email,full_name,phone,role,is_active,created_at FROM users ORDER BY created_at DESC").fetchall()
+        conn.close()
+        return [{"id": r["id"], "email": r["email"], "full_name": r["full_name"], "role": r["role"], "is_active": bool(r["is_active"])} for r in rows]
+
+    @app.get("/api/v1/dashboard/stats")
+    def api_stats(request: Request):
+        user = get_current_user(_bearer_token(request))
+        if user["role"] not in ("admin", "superadmin"):
+            raise HTTPException(403, "admin required")
+        conn = get_db()
+        result = {"users": conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
+                  "products": conn.execute("SELECT COUNT(*) FROM products WHERE deleted_at IS NULL").fetchone()[0],
+                  "orders": conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0]}
+        conn.close()
+        return result
+
+    @app.get("/api/v1/settings")
+    def api_settings():
+        return {"store_name": "Template", "currency": "LAK", "tax_percent": 0}
+
+    # ── Serve SPA at /spa/ ──
+    dist = Path("dist")
+    if dist.is_dir():
+        app.mount("/spa", StaticFiles(directory="dist", html=True), name="spa")
+
+    # ── SPA fallback for client-side routing (TanStack Router) ──
+    # Any path not matched by other routes serves SPA's index.html
+    @app.middleware("http")
+    async def spa_fallback(request: Request, call_next):
+        path = request.url.path
+        skip_prefixes = ("/api/", "/gradio_api/", "/spa/", "/gradio/", "/file/", "/theme.css", "/assets/")
+        if path == "/" or any(path.startswith(p) for p in skip_prefixes):
+            return await call_next(request)
+        index = dist / "index.html"
+        if index.exists():
+            return FileResponse(str(index))
+        return await call_next(request)
+
+    demo.block_thread()

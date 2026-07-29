@@ -14,7 +14,8 @@ short_description: web + api full stack
 
 # Template — Full Stack Web + API
 
-- **Web App**: `https://souliya-template.hf.space/`
+- **Web App**: `https://souliya-template.hf.space/spa/`
+- **Gradio UI**: `https://souliya-template.hf.space/`
 - **REST API**: `https://souliya-template.hf.space/api/v1/*`
 - **Gradio API**: `https://souliya-template.hf.space/gradio_api/call/gr_*`
 
