@@ -180,7 +180,7 @@ if __name__ == "__main__":
         outer = json.dumps([inner])
         return f"event: complete\ndata: {outer}\n\n"
 
-    @app.post("/gradio_api/call/{fn_name}")
+    @app.post("/api/v1/_call/{fn_name}")
     async def gradio_call(fn_name: str, request: Request):
         event_id = str(uuid.uuid4())
         body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {"data": []}
@@ -197,7 +197,7 @@ if __name__ == "__main__":
         _event_results[event_id] = result
         return {"event_id": event_id}
 
-    @app.get("/gradio_api/call/{fn_name}/{event_id}")
+    @app.get("/api/v1/_call/{fn_name}/{event_id}")
     async def gradio_result(fn_name: str, event_id: str):
         result = _event_results.get(event_id)
         if result is None:
@@ -305,7 +305,7 @@ if __name__ == "__main__":
         ".webmanifest": "application/manifest+json", ".html": "text/html",
     }
 
-    _API_PREFIXES = ("/api/", "/gradio_api/", "/theme.css", "/static/", "/file=")
+    _API_PREFIXES = ("/api/", "/theme.css", "/static/", "/file=")
 
     class _SPAMiddleware:
         def __init__(self, app: ASGIApp):
