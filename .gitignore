@@ -8,3 +8,7 @@ dist/
 .env
 .env.local
 .output
+tmp/
+**/tmp/main
+*.air
+
