@@ -302,40 +302,31 @@ if __name__ == "__main__":
         return {"store_name": "Template", "currency": "LAK", "tax_percent": 0}
 
     # ── Serve SPA at root / ──
-    if dist.is_dir():
-        assets_dir = dist / "assets"
-        if assets_dir.is_dir():
-            app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="spa-assets")
+    MIME = {
+        ".js": "application/javascript", ".css": "text/css",
+        ".svg": "image/svg+xml", ".ico": "image/x-icon",
+        ".webmanifest": "application/manifest+json", ".html": "text/html",
+    }
 
-        MIME = {
-            ".js": "application/javascript", ".css": "text/css",
-            ".svg": "image/svg+xml", ".ico": "image/x-icon",
-            ".webmanifest": "application/manifest+json", ".html": "text/html",
-        }
+    # Remove Gradio's root route so SPA can take over
+    from starlette.routing import Route
+    app.router.routes = [r for r in app.router.routes if not (
+        isinstance(r, Route) and r.path in ("/", "") and "GET" in r.methods
+    )]
 
-        # Remove Gradio's root route so SPA can take over
-        from starlette.routing import Route
-        app.router.routes = [r for r in app.router.routes if not (
-            isinstance(r, Route) and r.path in ("/", "") and "GET" in r.methods
-        )]
-
-        @app.get("/")
-        async def spa_root():
-            index = dist / "index.html"
-            if index.exists():
-                return Response(content=index.read_bytes(), media_type="text/html")
+    @app.get("/{path:path}")
+    async def serve_spa(path: str):
+        if path.startswith(("api/", "gradio_api/", "theme.css", "static/", "file=")):
             raise HTTPException(404)
-
-        @app.get("/{path:path}")
-        async def serve_spa(path: str):
-            if path.startswith(("api/", "gradio_api/", "theme.css", "static/", "file=")):
-                raise HTTPException(404)
+        if path == "":
+            filepath = dist / "index.html"
+        else:
             filepath = dist / path
-            if filepath.exists() and filepath.is_file():
-                return Response(content=filepath.read_bytes(), media_type=MIME.get(filepath.suffix, "application/octet-stream"))
-            index = dist / "index.html"
-            if index.exists():
-                return Response(content=index.read_bytes(), media_type="text/html")
-            raise HTTPException(404)
+        if filepath.exists() and filepath.is_file():
+            return Response(content=filepath.read_bytes(), media_type=MIME.get(filepath.suffix, "application/octet-stream"))
+        index = dist / "index.html"
+        if index.exists():
+            return Response(content=index.read_bytes(), media_type="text/html")
+        raise HTTPException(404)
 
     demo.block_thread()
