@@ -302,17 +302,31 @@ if __name__ == "__main__":
         return {"store_name": "Template", "currency": "LAK", "tax_percent": 0}
 
     # ── Serve SPA at root / ──
+    # Embed SPA's index.html directly in Gradio's root page so it renders at /
+    if dist.is_dir() and (dist / "index.html").exists():
+        spa_html = (dist / "index.html").read_text()
+        # Inject into Gradio's root page by adding an HTML block
+        pass  # handled via gr.HTML above in the Blocks UI
+
+    from starlette.routing import Route, Mount
+
+    # Debug: log all routes
+    print("=== ROUTES AFTER LAUNCH ===")
+    for r in app.router.routes:
+        name = type(r).__name__
+        path = getattr(r, 'path', getattr(r, 'paths', '?'))
+        print(f"  {name}: {path}")
+    print("===========================")
+
     MIME = {
         ".js": "application/javascript", ".css": "text/css",
         ".svg": "image/svg+xml", ".ico": "image/x-icon",
         ".webmanifest": "application/manifest+json", ".html": "text/html",
     }
 
-    # Remove Gradio's root route + /assets mount so SPA can take over
-    from starlette.routing import Route, Mount
+    # Remove Gradio's root route so SPA can take over
     app.router.routes = [r for r in app.router.routes if not (
-        (isinstance(r, Route) and r.path in ("/", "") and "GET" in r.methods) or
-        (isinstance(r, Mount) and r.path == "/assets")
+        isinstance(r, Route) and r.path in ("/", "") and "GET" in r.methods
     )]
 
     @app.get("/{path:path}")
