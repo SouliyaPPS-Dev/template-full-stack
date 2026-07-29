@@ -5,6 +5,8 @@ from typing import Any
 
 import gradio as gr
 import spaces
+from starlette.middleware import Middleware
+from starlette.types import ASGIApp, Scope, Receive, Send
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import Response
@@ -98,15 +100,31 @@ def _bearer_token(request: Request) -> str:
         raise HTTPException(401, "unauthorized")
     return auth.split(" ", 1)[1]
 
-# ── Gradio functions ──
-@spaces.GPU
-def gr_health():
+# ── DB helpers (shared by both Gradio and REST, no @spaces.GPU) ──
+def db_health():
     conn = get_db()
     u = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
     p = conn.execute("SELECT COUNT(*) FROM products WHERE deleted_at IS NULL").fetchone()[0]
     o = conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0]
     conn.close()
     return {"status":"ok","users":u,"products":p,"orders":o}
+
+def db_products():
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM products WHERE deleted_at IS NULL ORDER BY created_at DESC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+def db_orders():
+    conn = get_db()
+    rows = conn.execute("SELECT * FROM orders ORDER BY created_at DESC").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+# ── Gradio functions ──
+@spaces.GPU
+def gr_health():
+    return db_health()
 
 def gr_login(email: str, password: str):
     conn = get_db()
@@ -135,16 +153,10 @@ def gr_register(email: str, password: str, full_name: str, phone: str = ""):
             "user": {"id": uid, "email": email.lower(), "full_name": full_name, "phone": phone, "role": "user", "is_active": True}}
 
 def gr_products():
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM products WHERE deleted_at IS NULL ORDER BY created_at DESC").fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
+    return db_products()
 
 def gr_orders():
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM orders ORDER BY created_at DESC").fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
+    return db_orders()
 
 # ── Gradio Blocks UI ──
 # Embed the full SPA as the Gradio UI
@@ -200,7 +212,7 @@ if __name__ == "__main__":
 
     @app.get("/api/v1/health")
     def rest_health():
-        return gr_health()
+        return db_health()
 
     @app.post("/api/v1/auth/register")
     def api_register(data: RegisterReq):
@@ -239,7 +251,7 @@ if __name__ == "__main__":
 
     @app.get("/api/v1/products")
     def api_products():
-        return gr_products()
+        return db_products()
 
     @app.post("/api/v1/products")
     def api_create_product(data: ProductReq, request: Request):
@@ -286,27 +298,44 @@ if __name__ == "__main__":
     def api_settings():
         return {"store_name": "Template", "currency": "LAK", "tax_percent": 0}
 
-    # ── Serve SPA at root / (middleware interception) ──
+    # ── Serve SPA assets via middleware ──
     _MIME = {
         ".js": "application/javascript", ".css": "text/css",
         ".svg": "image/svg+xml", ".ico": "image/x-icon",
         ".webmanifest": "application/manifest+json", ".html": "text/html",
     }
+
     _API_PREFIXES = ("/api/", "/gradio_api/", "/theme.css", "/static/", "/file=")
 
-    @demo.app.middleware("http")
-    async def spa_middleware(request: Request, call_next):
-        path = request.url.path
-        rel = path.lstrip("/")
-        fp = (dist / rel) if rel else (dist / "index.html")
-        if fp.exists() and fp.is_file():
-            return Response(content=fp.read_bytes(), media_type=_MIME.get(fp.suffix, "application/octet-stream"))
-        if not path.startswith(_API_PREFIXES):
-            index = dist / "index.html"
-            if index.exists():
-                return Response(content=index.read_bytes(), media_type="text/html")
-        return await call_next(request)
+    class _SPAMiddleware:
+        def __init__(self, app: ASGIApp):
+            self.app = app
+        async def __call__(self, scope: Scope, receive: Receive, send: Send):
+            if scope["type"] == "http" and scope.get("method") in ("GET", "HEAD"):
+                path = scope.get("path", "/")
+                rel = path.lstrip("/")
+                fp = (dist / rel) if rel else (dist / "index.html")
+                if fp.exists() and fp.is_file():
+                    body = fp.read_bytes()
+                    ct = _MIME.get(fp.suffix, "application/octet-stream")
+                    await send({"type": "http.response.start", "status": 200, "headers": [
+                        (b"content-type", ct.encode()), (b"content-length", str(len(body)).encode()),
+                    ]})
+                    await send({"type": "http.response.body", "body": body})
+                    return
+                # SPA fallback: serve index.html for non-API paths
+                if not path.startswith(_API_PREFIXES):
+                    index = dist / "index.html"
+                    if index.exists() and index.is_file():
+                        body = index.read_bytes()
+                        await send({"type": "http.response.start", "status": 200, "headers": [
+                            (b"content-type", b"text/html"), (b"content-length", str(len(body)).encode()),
+                        ]})
+                        await send({"type": "http.response.body", "body": body})
+                        return
+            await self.app(scope, receive, send)
 
-    demo.app.middleware_stack = None
+    app.middleware_stack = None
+    app.add_middleware(_SPAMiddleware)
 
     demo.block_thread()
