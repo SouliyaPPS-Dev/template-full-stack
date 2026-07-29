@@ -215,6 +215,8 @@ if __name__ == "__main__":
     class LoginReq(BaseModel): email: str; password: str
     class RegisterReq(BaseModel): email: str; password: str; full_name: str; phone: str = ""
     class ProductReq(BaseModel): name: str; slug: str; sku: str = ""; category_id: str = ""; selling_price: float = 0; cost_price: float = 0; stock: int = 0; images: list[str] = []
+    class CreateUserReq(BaseModel): email: str; password: str; full_name: str; phone: str = ""; role: str = "user"
+    class UpdateUserReq(BaseModel): full_name: str | None = None; phone: str | None = None; role: str | None = None; is_active: bool | None = None
 
     @app.get("/api/v1/health")
     def rest_health():
@@ -339,6 +341,11 @@ if __name__ == "__main__":
         conn = get_db(); rows = conn.execute("SELECT * FROM orders ORDER BY created_at DESC").fetchall(); conn.close()
         return [dict(r) for r in rows]
 
+    def _format_user(row: sqlite3.Row) -> dict:
+        return {"id": row["id"], "email": row["email"], "full_name": row["full_name"],
+                "phone": row["phone"], "role": row["role"], "is_active": bool(row["is_active"]),
+                "email_verified": False, "created_at": row["created_at"]}
+
     @app.get("/api/v1/users")
     def api_users(request: Request):
         user = get_current_user(_bearer_token(request))
@@ -346,7 +353,55 @@ if __name__ == "__main__":
         conn = get_db()
         rows = conn.execute("SELECT id,email,full_name,phone,role,is_active,created_at FROM users ORDER BY created_at DESC").fetchall()
         conn.close()
-        return [dict(r) for r in rows]
+        return [_format_user(r) for r in rows]
+
+    @app.post("/api/v1/users")
+    def api_create_user(data: CreateUserReq, request: Request):
+        user = get_current_user(_bearer_token(request))
+        if user["role"] not in ("admin", "superadmin"): raise HTTPException(403, "admin required")
+        conn = get_db()
+        if conn.execute("SELECT 1 FROM users WHERE email=?", (data.email.lower(),)).fetchone():
+            conn.close(); raise HTTPException(409, "email already registered")
+        uid = str(uuid.uuid4())
+        hashed = hash_password(data.password)
+        conn.execute("INSERT INTO users (id,email,password_hash,full_name,phone,role,is_active) VALUES (?,?,?,?,?,?,?)",
+            (uid, data.email.lower(), hashed, data.full_name, data.phone, data.role, 1))
+        conn.commit()
+        row = conn.execute("SELECT id,email,full_name,phone,role,is_active,created_at FROM users WHERE id=?", (uid,)).fetchone()
+        conn.close()
+        return _format_user(row)
+
+    @app.put("/api/v1/users/{uid}")
+    def api_update_user(uid: str, data: UpdateUserReq, request: Request):
+        user = get_current_user(_bearer_token(request))
+        if user["role"] not in ("admin", "superadmin"): raise HTTPException(403, "admin required")
+        conn = get_db()
+        existing = conn.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        if not existing: conn.close(); raise HTTPException(404, "user not found")
+        updates = {}
+        if data.full_name is not None: updates["full_name"] = data.full_name
+        if data.phone is not None: updates["phone"] = data.phone
+        if data.role is not None: updates["role"] = data.role
+        if data.is_active is not None: updates["is_active"] = 1 if data.is_active else 0
+        if updates:
+            set_clause = ", ".join(f"{k}=?" for k in updates)
+            conn.execute(f"UPDATE users SET {set_clause} WHERE id=?", (*updates.values(), uid))
+            conn.commit()
+        row = conn.execute("SELECT id,email,full_name,phone,role,is_active,created_at FROM users WHERE id=?", (uid,)).fetchone()
+        conn.close()
+        return _format_user(row)
+
+    @app.delete("/api/v1/users/{uid}")
+    def api_delete_user(uid: str, request: Request):
+        user = get_current_user(_bearer_token(request))
+        if user["role"] not in ("admin", "superadmin"): raise HTTPException(403, "admin required")
+        if user["id"] == uid: raise HTTPException(400, "cannot delete yourself")
+        conn = get_db()
+        existing = conn.execute("SELECT 1 FROM users WHERE id=?", (uid,)).fetchone()
+        if not existing: conn.close(); raise HTTPException(404, "user not found")
+        conn.execute("DELETE FROM users WHERE id=?", (uid,))
+        conn.commit(); conn.close()
+        return {"message": "user deleted"}
 
     @app.get("/api/v1/dashboard/stats")
     def api_stats(request: Request):
