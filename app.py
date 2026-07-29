@@ -301,42 +301,40 @@ if __name__ == "__main__":
     def api_settings():
         return {"store_name": "Template", "currency": "LAK", "tax_percent": 0}
 
-    # ── Serve SPA at root / (ASGI-level interception) ──
+    # ── Serve SPA at root / (router-level interception) ──
     MIME = {
         ".js": "application/javascript", ".css": "text/css",
         ".svg": "image/svg+xml", ".ico": "image/x-icon",
         ".webmanifest": "application/manifest+json", ".html": "text/html",
     }
     API_PREFIXES = ("/api/", "/gradio_api/", "/theme.css", "/static/", "/file=")
+    _original_router = demo.app.router
 
-    _original_asgi = demo.app.__call__
-
-    async def _spa_asgi(scope, receive, send):
-        if scope["type"] == "http" and scope.get("method") == "GET":
-            path = scope.get("path", "/")
-            # Try serving the exact file from dist/
-            rel = path.lstrip("/")
-            filepath = dist / rel if rel else dist / "index.html"
-            if filepath.exists() and filepath.is_file():
-                body = filepath.read_bytes()
-                ct = MIME.get(filepath.suffix, "application/octet-stream")
-                await send({"type": "http.response.start", "status": 200, "headers": [
-                    (b"content-type", ct.encode()), (b"content-length", str(len(body)).encode()),
-                ]})
-                await send({"type": "http.response.body", "body": body})
-                return
-            # SPA client-side routing: serve index.html for non-API paths
-            if not path.startswith(API_PREFIXES):
-                index = dist / "index.html"
-                if index.exists():
-                    body = index.read_bytes()
+    class _SPARouter:
+        async def __call__(self, scope, receive, send):
+            if scope["type"] == "http" and scope.get("method") == "GET":
+                path = scope.get("path", "/")
+                rel = path.lstrip("/")
+                filepath = dist / rel if rel else dist / "index.html"
+                if filepath.exists() and filepath.is_file():
+                    body = filepath.read_bytes()
+                    ct = MIME.get(filepath.suffix, "application/octet-stream")
                     await send({"type": "http.response.start", "status": 200, "headers": [
-                        (b"content-type", b"text/html"), (b"content-length", str(len(body)).encode()),
+                        (b"content-type", ct.encode()), (b"content-length", str(len(body)).encode()),
                     ]})
                     await send({"type": "http.response.body", "body": body})
                     return
-        await _original_asgi(scope, receive, send)
+                if not path.startswith(API_PREFIXES):
+                    index = dist / "index.html"
+                    if index.exists():
+                        body = index.read_bytes()
+                        await send({"type": "http.response.start", "status": 200, "headers": [
+                            (b"content-type", b"text/html"), (b"content-length", str(len(body)).encode()),
+                        ]})
+                        await send({"type": "http.response.body", "body": body})
+                        return
+            await _original_router(scope, receive, send)
 
-    demo.app.__call__ = _spa_asgi
+    demo.app.router = _SPARouter()
 
     demo.block_thread()
