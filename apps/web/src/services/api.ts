@@ -172,14 +172,10 @@ export async function api<T>(path: string, options?: RequestInit, _userType: Use
     ...((options?.headers as Record<string, string>) || {}),
   };
 
-  const token = isClient() ? localStorage.getItem(`token_${_userType}`) : null;
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const saved = isClient() ? loadAuthFromStorage(_userType) : null;
+  if (saved?.token) headers["Authorization"] = `Bearer ${saved.token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-    credentials: "include",
-  });
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
   if (res.status === 401) {
     if (_userType === "admin") {
@@ -296,7 +292,8 @@ export async function login(email: string, password: string): Promise<AuthRespon
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
-  if (!IS_PRODUCTION && isClient()) {
+  if (isClient() && data.access_token) {
+    saveAuthToStorage(data.access_token, data.user, "user");
     currentUser = data.user;
     emitUserAuthChange(data.user);
   }
@@ -308,7 +305,8 @@ export async function adminLogin(email: string, password: string): Promise<AuthR
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
-  if (!IS_PRODUCTION && isClient()) {
+  if (isClient() && data.access_token) {
+    saveAuthToStorage(data.access_token, data.user, "admin");
     currentAdmin = data.user;
     emitAdminAuthChange(data.user);
   }
@@ -320,7 +318,8 @@ export async function register(email: string, password: string, fullName: string
     method: "POST",
     body: JSON.stringify({ email, password, full_name: fullName, phone }),
   });
-  if (!IS_PRODUCTION && isClient()) {
+  if (isClient() && data.access_token) {
+    saveAuthToStorage(data.access_token, data.user, "user");
     currentUser = data.user;
     emitUserAuthChange(data.user);
   }
@@ -336,6 +335,7 @@ export async function logout(userType: UserType = "user") {
     await api(`/${userType === "admin" ? "admin" : "auth"}/logout`, { method: "POST" });
   } catch {}
   if (isClient()) {
+    clearAuthFromStorage(userType);
     if (userType === "admin") {
       currentAdmin = null;
       emitAdminAuthChange(null);
@@ -384,7 +384,9 @@ export async function updateProfile(data: { full_name?: string; phone?: string; 
     method: "PUT",
     body: JSON.stringify(data),
   }, "user");
-  if (!IS_PRODUCTION && isClient()) {
+  if (isClient()) {
+    const saved = loadAuthFromStorage("user");
+    if (saved) saveAuthToStorage(saved.token, updated, "user");
     currentUser = updated;
     emitUserAuthChange(updated);
   }
