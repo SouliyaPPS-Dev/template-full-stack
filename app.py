@@ -148,7 +148,7 @@ def gr_orders():
 
 # ── Gradio Blocks UI ──
 with gr.Blocks(title="Template", theme=gr.themes.Soft()) as demo:
-    gr.Markdown("# Template\nFull-Stack Web + API\n\nView the [Web App](/spa/)")
+    gr.Markdown("# Template\nAPI Console")
     with gr.Tabs():
         with gr.Tab("Health"):
             btn1 = gr.Button("Check Health")
@@ -301,47 +301,42 @@ if __name__ == "__main__":
     def api_settings():
         return {"store_name": "Template", "currency": "LAK", "tax_percent": 0}
 
-    # ── Serve SPA at root / ──
-    # Embed SPA's index.html directly in Gradio's root page so it renders at /
-    if dist.is_dir() and (dist / "index.html").exists():
-        spa_html = (dist / "index.html").read_text()
-        # Inject into Gradio's root page by adding an HTML block
-        pass  # handled via gr.HTML above in the Blocks UI
-
-    from starlette.routing import Route, Mount
-
-    # Debug: log all routes
-    print("=== ROUTES AFTER LAUNCH ===")
-    for r in app.router.routes:
-        name = type(r).__name__
-        path = getattr(r, 'path', getattr(r, 'paths', '?'))
-        print(f"  {name}: {path}")
-    print("===========================")
-
+    # ── Serve SPA at root / (ASGI-level interception) ──
     MIME = {
         ".js": "application/javascript", ".css": "text/css",
         ".svg": "image/svg+xml", ".ico": "image/x-icon",
         ".webmanifest": "application/manifest+json", ".html": "text/html",
     }
+    API_PREFIXES = ("/api/", "/gradio_api/", "/theme.css", "/static/", "/file=")
 
-    # Remove Gradio's root route so SPA can take over
-    app.router.routes = [r for r in app.router.routes if not (
-        isinstance(r, Route) and r.path in ("/", "") and "GET" in r.methods
-    )]
+    _original_asgi = demo.app.__call__
 
-    @app.get("/{path:path}")
-    async def serve_spa(path: str):
-        if path.startswith(("api/", "gradio_api/", "theme.css", "static/", "file=")):
-            raise HTTPException(404)
-        if path == "":
-            filepath = dist / "index.html"
-        else:
-            filepath = dist / path
-        if filepath.exists() and filepath.is_file():
-            return Response(content=filepath.read_bytes(), media_type=MIME.get(filepath.suffix, "application/octet-stream"))
-        index = dist / "index.html"
-        if index.exists():
-            return Response(content=index.read_bytes(), media_type="text/html")
-        raise HTTPException(404)
+    async def _spa_asgi(scope, receive, send):
+        if scope["type"] == "http" and scope.get("method") == "GET":
+            path = scope.get("path", "/")
+            # Try serving the exact file from dist/
+            rel = path.lstrip("/")
+            filepath = dist / rel if rel else dist / "index.html"
+            if filepath.exists() and filepath.is_file():
+                body = filepath.read_bytes()
+                ct = MIME.get(filepath.suffix, "application/octet-stream")
+                await send({"type": "http.response.start", "status": 200, "headers": [
+                    (b"content-type", ct.encode()), (b"content-length", str(len(body)).encode()),
+                ]})
+                await send({"type": "http.response.body", "body": body})
+                return
+            # SPA client-side routing: serve index.html for non-API paths
+            if not path.startswith(API_PREFIXES):
+                index = dist / "index.html"
+                if index.exists():
+                    body = index.read_bytes()
+                    await send({"type": "http.response.start", "status": 200, "headers": [
+                        (b"content-type", b"text/html"), (b"content-length", str(len(body)).encode()),
+                    ]})
+                    await send({"type": "http.response.body", "body": body})
+                    return
+        await _original_asgi(scope, receive, send)
+
+    demo.app.__call__ = _spa_asgi
 
     demo.block_thread()
