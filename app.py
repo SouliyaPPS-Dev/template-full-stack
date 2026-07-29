@@ -313,23 +313,24 @@ if __name__ == "__main__":
             ".webmanifest": "application/manifest+json", ".html": "text/html",
         }
 
-        # Intercept root to serve SPA instead of Gradio UI
-        @app.middleware("http")
-        async def root_spa(request: Request, call_next):
-            if request.method == "GET" and request.url.path in ("/", ""):
-                index = dist / "index.html"
-                if index.exists():
-                    return Response(content=index.read_bytes(), media_type="text/html")
-            return await call_next(request)
+        # Remove Gradio's root route so SPA can take over
+        from starlette.routing import Route
+        app.router.routes = [r for r in app.router.routes if not (
+            isinstance(r, Route) and r.path in ("/", "") and "GET" in r.methods
+        )]
+
+        @app.get("/")
+        async def spa_root():
+            index = dist / "index.html"
+            if index.exists():
+                return Response(content=index.read_bytes(), media_type="text/html")
+            raise HTTPException(404)
 
         @app.get("/{path:path}")
         async def serve_spa(path: str):
-            if path.startswith(("api/", "gradio_api/", "gradio/", "theme.css", "static/", "file=")):
+            if path.startswith(("api/", "gradio_api/", "theme.css", "static/", "file=")):
                 raise HTTPException(404)
-            if path == "":
-                filepath = dist / "index.html"
-            else:
-                filepath = dist / path
+            filepath = dist / path
             if filepath.exists() and filepath.is_file():
                 return Response(content=filepath.read_bytes(), media_type=MIME.get(filepath.suffix, "application/octet-stream"))
             index = dist / "index.html"
