@@ -15,7 +15,7 @@ if ! command -v hf &>/dev/null; then
 fi
 
 # Check auth
-hf auth status 2>/dev/null || {
+hf auth whoami 2>/dev/null || {
   echo "Not logged in to HuggingFace. Run 'hf auth login' first."
   exit 1
 }

@@ -1,8 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import { nitro } from "nitro/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
@@ -23,11 +21,7 @@ export default defineConfig({
   },
   plugins: [
     tailwindcss(),
-    tanstackStart({
-      srcDirectory: "src",
-    }),
     react(),
-    nitro(),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg"],
@@ -50,7 +44,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globDirectory: ".output/public",
+        globDirectory: "dist",
         globPatterns: ["**/*.{js,css,html,svg,woff,woff2}"],
         globIgnores: ["**/node_modules/**/*", "sw.js", "workbox-*.js"],
         runtimeCaching: [

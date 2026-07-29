@@ -261,6 +261,7 @@ async function gradioApiCaller<T>(path: string, options?: RequestInit, _userType
     "/admin/login": () => gradioPredict<T>("gr_login", [body.email, body.password]),
     "/auth/register": () => gradioPredict<T>("gr_register", [body.email, body.password, body.full_name, body.phone || ""]),
     "/products": () => gradioPredict<T>("gr_products", []),
+    "/orders": () => gradioPredict<T>("gr_orders", []),
   };
 
   const trimmedPath = path.replace(/\/+$/, "");
