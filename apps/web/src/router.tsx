@@ -7,7 +7,7 @@ function NotFound() {
       <div className="text-center">
         <h1 className="text-4xl font-bold mb-2">404</h1>
         <p className="text-muted-foreground">Page not found</p>
-        <a href="/" className="text-primary underline mt-4 inline-block">Go home</a>
+        <a href={import.meta.env.BASE_URL} className="text-primary underline mt-4 inline-block">Go home</a>
       </div>
     </div>
   );
@@ -16,6 +16,7 @@ function NotFound() {
 export function getRouter() {
   const router = createRouter({
     routeTree,
+    basepath: import.meta.env.BASE_URL.replace(/\/$/, ""),
     defaultPreload: "intent",
     scrollRestoration: true,
     defaultNotFoundComponent: NotFound,

@@ -102,7 +102,7 @@ if (isClient()) {
 
 // ── Gradio 5.x API caller (for HF Spaces production) ──
 async function gradioPredict<T>(apiName: string, data: unknown[] = []): Promise<T> {
-  const res = await fetch(`${API_BASE}/gradio_api/call/${apiName}`, {
+  const res = await fetch(`${API_BASE}/_call/${apiName}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ data }),
@@ -116,7 +116,7 @@ async function gradioPredict<T>(apiName: string, data: unknown[] = []): Promise<
   const { event_id } = await res.json();
 
   // Poll for result via SSE
-  const dataRes = await fetch(`${API_BASE}/gradio_api/call/${apiName}/${event_id}`);
+  const dataRes = await fetch(`${API_BASE}/_call/${apiName}/${event_id}`);
   if (!dataRes.ok) {
     throw new Error(`Gradio data fetch failed: ${dataRes.status}`);
   }
@@ -208,147 +208,86 @@ export async function api<T>(path: string, options?: RequestInit, _userType: Use
   return JSON.parse(text) as T;
 }
 
-// ── Gradio proxy for HF Spaces ──
+// ── Direct REST API proxy for HF Spaces (no Gradio protocol) ──
 async function gradioApiCaller<T>(path: string, options?: RequestInit, _userType: UserType = "user"): Promise<T> {
   const method = options?.method || "GET";
-  const body = options?.body ? JSON.parse(options.body as string) : {};
 
-  // Handle logout: clear auth state
+  // Logout: clear auth state locally
   if ((path === "/auth/logout" || path === "/admin/logout") && method === "POST") {
-    if (path === "/admin/logout") {
-      clearAuthFromStorage("admin");
-      currentAdmin = null;
-      emitAdminAuthChange(null);
-    } else {
-      clearAuthFromStorage("user");
-      currentUser = null;
-      emitUserAuthChange(null);
-    }
+    clearAuthFromStorage("admin");
+    clearAuthFromStorage("user");
+    currentAdmin = null;
+    currentUser = null;
+    emitAdminAuthChange(null);
+    emitUserAuthChange(null);
     return { message: "Logged out" } as T;
   }
 
-  // Handle /auth/me: return cached user or null in production
+  // /auth/me GET: return from localStorage
   if (path === "/auth/me" && method === "GET") {
     const saved = loadAuthFromStorage(_userType);
-    if (saved?.user) {
-      return saved.user as T;
-    }
-    return null as T;
+    return (saved?.user || null) as T;
   }
 
-  // Handle /auth/me update
+  // /auth/me PUT: update localStorage
   if (path === "/auth/me" && method === "PUT") {
     const saved = loadAuthFromStorage(_userType);
-    if (saved) {
-      const updated: User = { ...saved.user, ...body };
-      saveAuthToStorage(saved.token, updated, _userType);
-      if (_userType === "admin") {
-        currentAdmin = updated;
-        emitAdminAuthChange(updated);
-      } else {
-        currentUser = updated;
-        emitUserAuthChange(updated);
-      }
-      return updated as T;
+    if (!saved) throw new Error("Unauthorized");
+    const updated: User = { ...saved.user, ...(options?.body ? JSON.parse(options.body as string) : {}) };
+    saveAuthToStorage(saved.token, updated, _userType);
+    if (_userType === "admin") { currentAdmin = updated; emitAdminAuthChange(updated); }
+    else { currentUser = updated; emitUserAuthChange(updated); }
+    return updated as T;
+  }
+
+  // For all other endpoints: call the REST API directly
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...((options?.headers as Record<string, string>) || {}),
+  };
+  const saved = isClient() ? loadAuthFromStorage(_userType) : null;
+  if (saved?.token) headers["Authorization"] = `Bearer ${saved.token}`;
+
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+
+  // Handle login response: save token + user to localStorage
+  if ((path === "/auth/login" || path === "/admin/login") && method === "POST" && res.ok) {
+    const authRes = await res.json() as AuthResponse;
+    if (authRes.access_token && authRes.user) {
+      saveAuthToStorage(authRes.access_token, authRes.user, _userType);
+      if (_userType === "admin") { currentAdmin = authRes.user; emitAdminAuthChange(authRes.user); }
+      else { currentUser = authRes.user; emitUserAuthChange(authRes.user); }
     }
+    return authRes as T;
+  }
+
+  // Handle register response: save token + user to localStorage
+  if (path === "/auth/register" && method === "POST" && res.ok) {
+    const authRes = await res.json() as AuthResponse;
+    if (authRes.access_token && authRes.user) {
+      saveAuthToStorage(authRes.access_token, authRes.user, "user");
+      currentUser = authRes.user;
+      emitUserAuthChange(authRes.user);
+    }
+    return authRes as T;
+  }
+
+  if (res.status === 401) {
+    if (_userType === "admin") { currentAdmin = null; emitAdminAuthChange(null); }
+    else { currentUser = null; emitUserAuthChange(null); }
     throw new Error("Unauthorized");
   }
 
-  // Map REST endpoints to Gradio function names
-  const routeMap: Record<string, (data: unknown[]) => Promise<T>> = {
-    "/health": () => gradioPredict<T>("gr_health", []),
-    "/auth/login": () => gradioPredict<T>("gr_login", [body.email, body.password]),
-    "/admin/login": () => gradioPredict<T>("gr_login", [body.email, body.password]),
-    "/auth/register": () => gradioPredict<T>("gr_register", [body.email, body.password, body.full_name, body.phone || ""]),
-    "/products": () => gradioPredict<T>("gr_products", []),
-    "/orders": () => gradioPredict<T>("gr_orders", []),
-  };
-
-  const trimmedPath = path.replace(/\/+$/, "");
-  const handler = routeMap[trimmedPath];
-
-  if (handler) {
-    const result = await handler([]);
-
-    // Handle login responses: save token + user to localStorage
-    if ((trimmedPath === "/auth/login" || trimmedPath === "/admin/login") && method === "POST") {
-      const authRes = result as unknown as AuthResponse;
-      if (authRes.access_token && authRes.user) {
-        saveAuthToStorage(authRes.access_token, authRes.user, _userType);
-        if (_userType === "admin") {
-          currentAdmin = authRes.user;
-          emitAdminAuthChange(authRes.user);
-        } else {
-          currentUser = authRes.user;
-          emitUserAuthChange(authRes.user);
-        }
-      }
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    let err: { error?: string } = {};
+    if (text && !text.startsWith("<!")) {
+      try { err = JSON.parse(text); } catch {}
     }
-
-    // Handle register responses
-    if (trimmedPath === "/auth/register" && method === "POST") {
-      const authRes = result as unknown as AuthResponse;
-      if (authRes.access_token && authRes.user) {
-        saveAuthToStorage(authRes.access_token, authRes.user, "user");
-        currentUser = authRes.user;
-        emitUserAuthChange(authRes.user);
-      }
-    }
-
-    return result;
+    throw new Error(err.error || `API error: ${res.status}`);
   }
 
-  // For unregistered endpoints in production, return fallback
-  if (trimmedPath.startsWith("/categories")) {
-    return [] as T;
-  }
-  if (trimmedPath.startsWith("/orders")) {
-    if (method === "POST") {
-      return { id: "prod-only", order_number: "PROD-ORD", grand_total: 0, status: "pending", created_at: new Date().toISOString() } as T;
-    }
-    return [] as T;
-  }
-  if (trimmedPath.startsWith("/users")) {
-    if (method === "POST" || method === "PUT") {
-      const saved = loadAuthFromStorage("admin");
-      const newUser: User = { ...body, id: crypto.randomUUID?.() || Date.now().toString(), is_active: true, created_at: new Date().toISOString() };
-      return newUser as T;
-    }
-    // Return current admin user as sole user
-    const saved = loadAuthFromStorage("admin");
-    if (saved?.user) {
-      if (trimmedPath === `/users/${saved.user.id}`) return saved.user as T;
-      return [saved.user] as T;
-    }
-    return [] as T;
-  }
-  if (trimmedPath.startsWith("/dashboard/stats")) {
-    try {
-      return await gradioPredict<T>("gr_health", []) as T;
-    } catch {
-      return { total_products: 0, total_orders: 0, total_users: 1, total_categories: 0, total_revenue: 0, pending_orders: 0 } as T;
-    }
-  }
-  if (trimmedPath.startsWith("/settings")) {
-    return [
-      { key: "store_name", value: "API Template" },
-      { key: "store_phone", value: "" },
-      { key: "currency", value: "LAK" },
-      { key: "tax_percent", value: "7" },
-      { key: "store_logo", value: "" },
-    ] as T;
-  }
-  if (trimmedPath.startsWith("/cart")) {
-    return [] as T;
-  }
-  if (trimmedPath.startsWith("/quotations")) {
-    if (method === "POST") {
-      return { id: "prod-only", quotation_number: "PROD-QT", grand_total: 0, status: "draft", created_at: new Date().toISOString() } as T;
-    }
-    return [] as T;
-  }
-
-  throw new Error(`Unknown endpoint: ${path}`);
+  return res.json() as Promise<T>;
 }
 
 // ── Auth API functions ──
