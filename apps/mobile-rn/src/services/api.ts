@@ -39,14 +39,47 @@ function base64Decode(str: string): string {
   }
 }
 
+const TOKEN_KEY = "user_token";
+const API_URL_KEY = "user_token_api_url";
+
 async function getToken(): Promise<string | null> {
-  if (_token) return _token;
+  if (_token) {
+    const storedUrl = await AsyncStorage.getItem(API_URL_KEY).catch(() => null);
+    if (storedUrl !== API_BASE) {
+      _token = null;
+      await clearStoredAuth();
+      return null;
+    }
+    return _token;
+  }
   try {
-    _token = await AsyncStorage.getItem("user_token");
+    const storedUrl = await AsyncStorage.getItem(API_URL_KEY).catch(() => null);
+    if (storedUrl && storedUrl !== API_BASE) {
+      await clearStoredAuth();
+      return null;
+    }
+    _token = await AsyncStorage.getItem(TOKEN_KEY);
   } catch {
     _token = null;
   }
   return _token;
+}
+
+async function clearStoredAuth(): Promise<void> {
+  _token = null;
+  try {
+    await AsyncStorage.multiRemove([TOKEN_KEY, API_URL_KEY, "user"]);
+  } catch {}
+}
+
+async function saveToken(token: string): Promise<void> {
+  _token = token;
+  try {
+    await AsyncStorage.multiSet([
+      [TOKEN_KEY, token],
+      [API_URL_KEY, API_BASE],
+    ]);
+  } catch {}
 }
 
 export async function api<T>(path: string, options?: RequestInit): Promise<T> {
@@ -62,11 +95,7 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
   if (res.status === 401) {
-    _token = null;
-    try {
-      await AsyncStorage.removeItem("user_token");
-      await AsyncStorage.removeItem("user");
-    } catch {}
+    await clearStoredAuth();
     throw new Error("Unauthorized");
   }
 
@@ -83,9 +112,8 @@ export async function login(email: string, password: string): Promise<AuthRespon
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
-  _token = data.access_token;
+  await saveToken(data.access_token);
   try {
-    await AsyncStorage.setItem("user_token", data.access_token);
     await AsyncStorage.setItem("user", JSON.stringify(data.user));
   } catch {}
   return data;
@@ -101,9 +129,8 @@ export async function register(
     method: "POST",
     body: JSON.stringify({ email, password, full_name: fullName, phone }),
   });
-  _token = data.access_token;
+  await saveToken(data.access_token);
   try {
-    await AsyncStorage.setItem("user_token", data.access_token);
     await AsyncStorage.setItem("user", JSON.stringify(data.user));
   } catch {}
   return data;
@@ -128,11 +155,7 @@ export async function updateProfile(data: {
 }
 
 export async function logout(): Promise<void> {
-  _token = null;
-  try {
-    await AsyncStorage.removeItem("user_token");
-    await AsyncStorage.removeItem("user");
-  } catch {}
+  await clearStoredAuth();
 }
 
 export async function getStoredUser(): Promise<User | null> {
