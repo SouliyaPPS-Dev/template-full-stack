@@ -123,7 +123,14 @@ def db_products():
     conn = get_db()
     rows = conn.execute("SELECT * FROM products WHERE deleted_at IS NULL ORDER BY created_at DESC").fetchall()
     conn.close()
-    return [dict(r) for r in rows]
+    out = []
+    for r in rows:
+        d = dict(r)
+        if isinstance(d.get("images"), str):
+            try: d["images"] = json.loads(d["images"])
+            except: d["images"] = []
+        out.append(d)
+    return out
 
 def db_orders():
     conn = get_db()
@@ -355,7 +362,7 @@ if __name__ == "__main__":
         conn.execute("INSERT INTO products (id,name,slug,sku,category_id,selling_price,cost_price,stock,images,is_active) VALUES (?,?,?,?,?,?,?,?,?,?)",
             (pid, data.name, data.slug, data.sku, data.category_id, data.selling_price, data.cost_price, data.stock, json.dumps(data.images), 1))
         conn.commit(); conn.close()
-        return {"id": pid, "name": data.name, "slug": data.slug, "selling_price": data.selling_price, "stock": data.stock}
+        return {"id": pid, "name": data.name, "slug": data.slug, "sku": data.sku, "selling_price": data.selling_price, "cost_price": data.cost_price, "stock": data.stock, "images": data.images, "is_active": True}
 
     class ProductUpdateReq(BaseModel):
         name: str | None = None; slug: str | None = None; sku: str | None = None
@@ -385,8 +392,13 @@ if __name__ == "__main__":
             set_clause = ", ".join(f"{k}=?" for k in updates)
             conn.execute(f"UPDATE products SET {set_clause} WHERE id=?", (*updates.values(), pid))
             conn.commit()
+        row = conn.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone()
         conn.close()
-        return db_products()
+        d = dict(row)
+        if isinstance(d.get("images"), str):
+            try: d["images"] = json.loads(d["images"])
+            except: d["images"] = []
+        return d
 
     @app.delete("/api/v1/products/{pid}")
     def api_delete_product(pid: str, request: Request):
