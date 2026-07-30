@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -43,12 +44,13 @@ function AdminLoginPage() {
     try {
       const data = await adminLogin(email, password);
       if (data.user.role !== "admin" && data.user.role !== "superadmin" && data.user.role !== "staff") {
-        setError("Access denied. Admin only.");
+        toast.error("Access denied. Admin only.");
         return;
       }
+      toast.success(`Welcome, ${data.user.full_name}`);
       window.location.href = "/admin";
     } catch (err: any) {
-      setError(err.message);
+      toast.error(err.message || "Login failed");
     } finally {
       setLoading(false);
     }

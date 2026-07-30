@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { api } from "@/services/api";
 
@@ -49,12 +51,18 @@ export const Route = createFileRoute("/_admin/admin/orders")({
 
 function AdminOrders() {
   const { orders: serverOrders } = Route.useLoaderData();
-  const { data: clientOrders, isLoading } = useQuery({
+  const { data: clientOrders, isLoading, isError } = useQuery({
     queryKey: ["admin-orders"],
     queryFn: () => api<Order[]>("/orders", undefined, "admin"),
   });
 
   const orders: Order[] = clientOrders || serverOrders;
+
+  useEffect(() => {
+    if (isError) {
+      toast.error("Failed to load orders");
+    }
+  }, [isError]);
 
   return (
     <div>

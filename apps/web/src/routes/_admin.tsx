@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin-layout";
 import { getMe, setUser } from "@/services/api";
 import { Loader2 } from "lucide-react";
@@ -36,6 +37,7 @@ function AdminAuthGate() {
 
   useEffect(() => {
     if (isError) {
+      toast.error("Session expired. Please login again.");
       window.location.href = "/admin/login";
     }
   }, [isError]);

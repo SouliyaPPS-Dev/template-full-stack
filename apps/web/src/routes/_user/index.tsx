@@ -1,4 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart, Store, Tag, ArrowRight, User, Loader2 } from "lucide-react";
@@ -64,6 +66,12 @@ export const Route = createFileRoute("/_user/")({
 function HomePage() {
   const { categories, settings } = Route.useLoaderData();
   const user = useAuth();
+
+  useEffect(() => {
+    if (!categories?.length && !settings?.length && IS_PRODUCTION) {
+      toast.error("Failed to load homepage data");
+    }
+  }, [categories, settings]);
 
   const storeName = settings?.find((s) => s.key === "store_name")?.value || "Template";
 

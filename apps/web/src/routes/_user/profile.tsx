@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ function ProfilePage() {
 
   useEffect(() => {
     if ((isError || (!isLoading && !user)) && !redirecting) {
+      toast.error("Session expired. Please login again.");
       setRedirecting(true);
       window.location.href = "/login";
     }
@@ -70,13 +72,14 @@ function ProfilePage() {
   const mutation = useMutation({
     mutationFn: () => updateProfile({ full_name: fullName, phone }),
     onSuccess: (updatedUser) => {
-      setSuccess("Profile updated successfully!");
+      toast.success("Profile updated successfully!");
       setError("");
+      setSuccess("");
       queryClient.setQueryData(["profile"], updatedUser);
-      setTimeout(() => setSuccess(""), 3000);
     },
     onError: (err: Error) => {
-      setError(err.message);
+      toast.error(err.message);
+      setError("");
       setSuccess("");
     },
   });
@@ -184,9 +187,6 @@ function ProfilePage() {
                 placeholder="+856 20 000 000"
               />
             </div>
-
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            {success && <p className="text-sm text-green-600">{success}</p>}
 
             <Button type="submit" disabled={mutation.isPending}>
               <Save className="h-4 w-4 mr-2" />

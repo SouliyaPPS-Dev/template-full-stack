@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart, Loader2 } from "lucide-react";
@@ -50,6 +52,12 @@ export const Route = createFileRoute("/_user/products")({
 
 function ProductsPage() {
   const { products } = Route.useLoaderData();
+
+  useEffect(() => {
+    if (!products?.length && IS_PRODUCTION) {
+      toast.error("Failed to load products");
+    }
+  }, [products]);
 
   return (
     <div>

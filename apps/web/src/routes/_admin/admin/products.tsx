@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Package } from "lucide-react";
@@ -33,12 +35,18 @@ export const Route = createFileRoute("/_admin/admin/products")({
 
 function AdminProducts() {
   const { products: serverProducts } = Route.useLoaderData();
-  const { data: clientProducts, isLoading } = useQuery({
+  const { data: clientProducts, isLoading, isError } = useQuery({
     queryKey: ["admin-products"],
     queryFn: () => api<Product[]>("/products", undefined, "admin"),
   });
 
   const products: Product[] = clientProducts || serverProducts;
+
+  useEffect(() => {
+    if (isError) {
+      toast.error("Failed to load products");
+    }
+  }, [isError]);
 
   return (
     <div>

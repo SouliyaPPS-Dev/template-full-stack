@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef } from "react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Database, Download, Upload, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Database, Download, Upload, Loader2 } from "lucide-react";
 import { backupDatabase, exportDatabase, importDatabase } from "@/services/admin";
 
 export const Route = createFileRoute("/_admin/admin/settings")({
@@ -13,21 +14,15 @@ function AdminSettings() {
   const [backupLoading, setBackupLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [importLoading, setImportLoading] = useState(false);
-  const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const showStatus = (type: "success" | "error", message: string) => {
-    setStatus({ type, message });
-    setTimeout(() => setStatus(null), 5000);
-  };
 
   const handleBackup = async () => {
     setBackupLoading(true);
     try {
       await backupDatabase();
-      showStatus("success", "Database backup downloaded successfully.");
+      toast.success("Database backup downloaded successfully.");
     } catch (err: any) {
-      showStatus("error", err.message || "Backup failed.");
+      toast.error(err.message || "Backup failed.");
     } finally {
       setBackupLoading(false);
     }
@@ -37,9 +32,9 @@ function AdminSettings() {
     setExportLoading(true);
     try {
       await exportDatabase();
-      showStatus("success", "Data export downloaded successfully.");
+      toast.success("Data export downloaded successfully.");
     } catch (err: any) {
-      showStatus("error", err.message || "Export failed.");
+      toast.error(err.message || "Export failed.");
     } finally {
       setExportLoading(false);
     }
@@ -52,12 +47,9 @@ function AdminSettings() {
     setImportLoading(true);
     try {
       const result = await importDatabase(file);
-      showStatus(
-        "success",
-        `Import completed. ${result.executed} statements executed, ${result.failed} failed.`
-      );
+      toast.success(`Import completed. ${result.executed} executed, ${result.failed} failed.`);
     } catch (err: any) {
-      showStatus("error", err.message || "Import failed.");
+      toast.error(err.message || "Import failed.");
     } finally {
       setImportLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -67,23 +59,6 @@ function AdminSettings() {
   return (
     <div>
       <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-4 md:mb-6">Settings</h1>
-
-      {status && (
-        <div
-          className={`mb-6 flex items-center gap-2 rounded-lg border p-4 ${
-            status.type === "success"
-              ? "border-green-200 bg-green-50 text-green-800"
-              : "border-red-200 bg-red-50 text-red-800"
-          }`}
-        >
-          {status.type === "success" ? (
-            <CheckCircle className="h-5 w-5 shrink-0" />
-          ) : (
-            <AlertCircle className="h-5 w-5 shrink-0" />
-          )}
-          <p className="text-sm">{status.message}</p>
-        </div>
-      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         {/* Backup Database */}

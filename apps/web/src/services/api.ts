@@ -203,29 +203,30 @@ export async function api<T>(path: string, options?: RequestInit, _userType: Use
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
-  if (res.status === 401 && path !== "/auth/refresh") {
-    const newToken = await _doRefresh(_userType);
-    if (newToken) {
-      headers["Authorization"] = `Bearer ${newToken}`;
-      const retryRes = await fetch(`${API_BASE}${path}`, { ...options, headers });
-      if (retryRes.ok) {
-        const text = await retryRes.text();
-        if (!text.startsWith("<!")) return JSON.parse(text) as T;
-      }
-    }
-    clearAuthFromStorage(_userType);
-    if (_userType === "admin") { currentAdmin = null; emitAdminAuthChange(null); }
-    else { currentUser = null; emitUserAuthChange(null); }
-    throw new Error("Unauthorized");
-  }
-
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    let err: { error?: string } = {};
+    let msg = `API error: ${res.status}`;
     if (text && !text.startsWith("<!")) {
-      try { err = JSON.parse(text); } catch {}
+      try {
+        const err = JSON.parse(text);
+        msg = err.detail || err.error || err.message || msg;
+      } catch {}
     }
-    throw new Error(err.error || `API error: ${res.status}`);
+    if (res.status === 401 && path !== "/auth/refresh") {
+      const newToken = await _doRefresh(_userType);
+      if (newToken) {
+        headers["Authorization"] = `Bearer ${newToken}`;
+        const retryRes = await fetch(`${API_BASE}${path}`, { ...options, headers });
+        if (retryRes.ok) {
+          const retryText = await retryRes.text();
+          if (!retryText.startsWith("<!")) return JSON.parse(retryText) as T;
+        }
+      }
+      clearAuthFromStorage(_userType);
+      if (_userType === "admin") { currentAdmin = null; emitAdminAuthChange(null); }
+      else { currentUser = null; emitUserAuthChange(null); }
+    }
+    throw new Error(msg);
   }
 
   const text = await res.text();
@@ -299,26 +300,27 @@ async function gradioApiCaller<T>(path: string, options?: RequestInit, _userType
     return authRes as T;
   }
 
-  if (res.status === 401 && path !== "/auth/refresh") {
-    const newToken = await _doRefresh(_userType);
-    if (newToken) {
-      headers["Authorization"] = `Bearer ${newToken}`;
-      const retryRes = await fetch(`${API_BASE}${path}`, { ...options, headers });
-      if (retryRes.ok) return retryRes.json() as Promise<T>;
-    }
-    clearAuthFromStorage(_userType);
-    if (_userType === "admin") { currentAdmin = null; emitAdminAuthChange(null); }
-    else { currentUser = null; emitUserAuthChange(null); }
-    throw new Error("Unauthorized");
-  }
-
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    let err: { error?: string } = {};
+    let msg = `API error: ${res.status}`;
     if (text && !text.startsWith("<!")) {
-      try { err = JSON.parse(text); } catch {}
+      try {
+        const err = JSON.parse(text);
+        msg = err.detail || err.error || err.message || msg;
+      } catch {}
     }
-    throw new Error(err.error || `API error: ${res.status}`);
+    if (res.status === 401 && path !== "/auth/refresh") {
+      const newToken = await _doRefresh(_userType);
+      if (newToken) {
+        headers["Authorization"] = `Bearer ${newToken}`;
+        const retryRes = await fetch(`${API_BASE}${path}`, { ...options, headers });
+        if (retryRes.ok) return retryRes.json() as Promise<T>;
+      }
+      clearAuthFromStorage(_userType);
+      if (_userType === "admin") { currentAdmin = null; emitAdminAuthChange(null); }
+      else { currentUser = null; emitUserAuthChange(null); }
+    }
+    throw new Error(msg);
   }
 
   return res.json() as Promise<T>;

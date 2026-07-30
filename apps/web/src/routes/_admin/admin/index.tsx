@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, ShoppingCart, Package, Users, AlertCircle, Loader2 } from "lucide-react";
 import { api } from "@/services/api";
@@ -45,6 +47,12 @@ export const Route = createFileRoute("/_admin/admin/")({
 
 function AdminDashboard() {
   const { stats, orders } = Route.useLoaderData();
+
+  useEffect(() => {
+    if (!stats) {
+      toast.error("Failed to load dashboard data");
+    }
+  }, [stats]);
 
   const statCards = [
     { label: "Total Revenue", value: `$${(stats?.total_revenue || 0).toLocaleString()}`, icon: DollarSign },
