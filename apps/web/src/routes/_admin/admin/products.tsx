@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Package } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Plus, Package, Pencil, Trash2, X } from "lucide-react";
 import { api } from "@/services/api";
 
 interface Product {
@@ -18,6 +20,22 @@ interface Product {
   is_active: boolean;
   images: string[];
 }
+
+interface ProductForm {
+  name: string;
+  slug: string;
+  sku: string;
+  selling_price: number;
+  cost_price: number;
+  stock: number;
+  is_active: boolean;
+}
+
+const emptyForm: ProductForm = {
+  name: "", slug: "", sku: "",
+  selling_price: 0, cost_price: 0,
+  stock: 0, is_active: true,
+};
 
 async function loader() {
   try {
@@ -34,6 +52,7 @@ export const Route = createFileRoute("/_admin/admin/products")({
 });
 
 function AdminProducts() {
+  const queryClient = useQueryClient();
   const { products: serverProducts } = Route.useLoaderData();
   const { data: clientProducts, isLoading, isError } = useQuery({
     queryKey: ["admin-products"],
@@ -43,16 +62,110 @@ function AdminProducts() {
   const products: Product[] = clientProducts || serverProducts;
 
   useEffect(() => {
-    if (isError) {
-      toast.error("Failed to load products");
-    }
+    if (isError) toast.error("Failed to load products");
   }, [isError]);
+
+  const [showForm, setShowForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [form, setForm] = useState<ProductForm>(emptyForm);
+  const [error, setError] = useState("");
+
+  const createMutation = useMutation({
+    mutationFn: (data: ProductForm) => api<Product>("/products", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }, "admin"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+      toast.success("Product created successfully");
+      closeForm();
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<ProductForm> }) => api<Product>(`/products/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }, "admin"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+      toast.success("Product updated successfully");
+      closeForm();
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api<{ message: string }>(`/products/${id}`, {
+      method: "DELETE",
+    }, "admin"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+      toast.success("Product deleted successfully");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  function slugify(text: string) {
+    return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  }
+
+  function openCreate() {
+    setEditingProduct(null);
+    setForm(emptyForm);
+    setError("");
+    setShowForm(true);
+  }
+
+  function openEdit(product: Product) {
+    setEditingProduct(product);
+    setForm({
+      name: product.name,
+      slug: product.slug,
+      sku: product.sku,
+      selling_price: product.selling_price,
+      cost_price: product.cost_price,
+      stock: product.stock,
+      is_active: product.is_active,
+    });
+    setError("");
+    setShowForm(true);
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    setEditingProduct(null);
+    setForm(emptyForm);
+    setError("");
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+
+    if (editingProduct) {
+      updateMutation.mutate({ id: editingProduct.id, data: form });
+    } else {
+      if (!form.name) { setError("Name is required"); return; }
+      if (!form.slug) { setError("Slug is required"); return; }
+      createMutation.mutate(form);
+    }
+  }
+
+  function handleDelete(product: Product) {
+    if (confirm(`Delete product "${product.name}"?`)) {
+      deleteMutation.mutate(product.id);
+    }
+  }
+
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4 md:mb-6">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Products</h1>
-        <Button>
+        <Button onClick={openCreate}>
           <Plus className="h-4 w-4 mr-2" />
           <span className="hidden sm:inline">Add Product</span>
           <span className="sm:hidden">Add</span>
@@ -71,12 +184,13 @@ function AdminProducts() {
                   <th className="text-right p-3 font-medium">Price</th>
                   <th className="text-right p-3 font-medium">Stock</th>
                   <th className="text-center p-3 font-medium">Status</th>
+                  <th className="text-center p-3 font-medium w-20">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-muted-foreground">Loading...</td>
+                    <td colSpan={7} className="p-8 text-center text-muted-foreground">Loading...</td>
                   </tr>
                 ) : products && products.length > 0 ? (
                   products.map((product) => (
@@ -106,11 +220,21 @@ function AdminProducts() {
                           {product.is_active ? "Active" : "Inactive"}
                         </span>
                       </td>
+                      <td className="p-3 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(product)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(product)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-muted-foreground">No products yet.</td>
+                    <td colSpan={7} className="p-8 text-center text-muted-foreground">No products yet.</td>
                   </tr>
                 )}
               </tbody>
@@ -118,6 +242,113 @@ function AdminProducts() {
           </div>
         </CardContent>
       </Card>
+
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={closeForm}>
+          <div className="bg-background rounded-xl shadow-lg w-full max-w-md mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">{editingProduct ? "Edit Product" : "Add Product"}</h2>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={closeForm}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  value={form.name}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    setForm({ ...form, name, slug: editingProduct ? form.slug : slugify(name) });
+                  }}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="slug">Slug</Label>
+                <Input
+                  id="slug"
+                  value={form.slug}
+                  onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                  disabled={!!editingProduct}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="sku">SKU</Label>
+                <Input
+                  id="sku"
+                  value={form.sku}
+                  onChange={(e) => setForm({ ...form, sku: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="selling_price">Selling Price</Label>
+                  <Input
+                    id="selling_price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.selling_price}
+                    onChange={(e) => setForm({ ...form, selling_price: parseFloat(e.target.value) || 0 })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cost_price">Cost Price</Label>
+                  <Input
+                    id="cost_price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.cost_price}
+                    onChange={(e) => setForm({ ...form, cost_price: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="stock">Stock</Label>
+                  <Input
+                    id="stock"
+                    type="number"
+                    min="0"
+                    value={form.stock}
+                    onChange={(e) => setForm({ ...form, stock: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2 flex items-end pb-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.is_active}
+                      onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm font-medium">Active</span>
+                  </label>
+                </div>
+              </div>
+
+              {error && <p className="text-sm text-destructive">{error}</p>}
+
+              <div className="flex gap-2 justify-end">
+                <Button type="button" variant="outline" onClick={closeForm}>Cancel</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Saving..." : editingProduct ? "Update" : "Create"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

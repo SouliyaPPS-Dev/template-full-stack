@@ -126,6 +126,23 @@ func AdminOnly(next http.Handler) http.Handler {
 	})
 }
 
+// ParseTokenWithoutExpiry validates JWT signature but skips expiry/claims validation (for refresh)
+func ParseTokenWithoutExpiry(cfg *config.Config, tokenStr string) (jwt.MapClaims, error) {
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return cfg.JWTSecret, nil
+	}, jwt.WithoutClaimsValidation())
+	if err != nil {
+		return nil, err
+	}
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		return claims, nil
+	}
+	return nil, fmt.Errorf("invalid token claims")
+}
+
 func validateJWT(cfg *config.Config, tokenStr string) (jwt.MapClaims, error) {
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {

@@ -65,6 +65,6 @@ func Load() *Config {
 		MaxIdleConns:    maxIdle,
 		ConnMaxLifetime: 5 * time.Minute,
 		BodyMaxBytes:    1 << 20, // 1MB
-		JWTExpiry:       7 * 24 * time.Hour,
+		JWTExpiry:       30 * 24 * time.Hour,
 	}
 }

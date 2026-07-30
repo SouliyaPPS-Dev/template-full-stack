@@ -61,6 +61,7 @@ func main() {
 			r.Post("/auth/register", handlers.Register(cfg))
 			r.Post("/auth/login", handlers.Login(cfg))
 		})
+		r.Post("/auth/refresh", handlers.RefreshToken(cfg))
 		r.Post("/auth/logout", handlers.Logout)
 		r.Post("/admin/login", handlers.AdminLogin(cfg))
 		r.Post("/admin/logout", handlers.AdminLogout)

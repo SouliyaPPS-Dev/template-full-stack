@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -280,6 +281,56 @@ func AdminLogin(cfg *config.Config) http.HandlerFunc {
 			AccessToken: token,
 			TokenType:   "bearer",
 			User:        user,
+		})
+	}
+}
+
+func RefreshToken(cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			writeError(w, http.StatusUnauthorized, "missing authorization header")
+			return
+		}
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			writeError(w, http.StatusUnauthorized, "invalid authorization format")
+			return
+		}
+
+		claims, err := middleware.ParseTokenWithoutExpiry(cfg, parts[1])
+		if err != nil {
+			writeError(w, http.StatusUnauthorized, "invalid token")
+			return
+		}
+
+		userID := fmt.Sprintf("%v", claims["sub"])
+		role := fmt.Sprintf("%v", claims["role"])
+
+		var exists bool
+		var isActive bool
+		database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE id=$1), COALESCE((SELECT is_active FROM users WHERE id=$1), false)", userID).Scan(&exists, &isActive)
+		if !exists {
+			writeError(w, http.StatusUnauthorized, "user not found")
+			return
+		}
+		if !isActive {
+			writeError(w, http.StatusForbidden, "account is disabled")
+			return
+		}
+
+		newToken, err := middleware.GenerateJWT(cfg, userID, role)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to generate token")
+			return
+		}
+
+		writeJSON(w, http.StatusOK, models.AuthResponse{
+			AccessToken: newToken,
+			TokenType:   "bearer",
+			User: models.User{
+				ID: userID,
+			},
 		})
 	}
 }
