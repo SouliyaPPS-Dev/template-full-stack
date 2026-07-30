@@ -18,7 +18,7 @@ from pydantic import BaseModel
 DB_PATH = "/data/app.db"
 JWT_SECRET = os.environ.get("JWT_SECRET", "super-secret-key-change-in-production")
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRE_HOURS = 24 * 7
+JWT_EXPIRE_HOURS = 24 * 30
 dist = Path("dist")
 
 # ── Database ──
