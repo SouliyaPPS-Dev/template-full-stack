@@ -240,14 +240,11 @@ export async function api<T>(path: string, options?: RequestInit, _userType: Use
 async function gradioApiCaller<T>(path: string, options?: RequestInit, _userType: UserType = "user"): Promise<T> {
   const method = options?.method || "GET";
 
-  // Logout: clear auth state locally
+  // Logout: clear auth state only for the calling user type
   if ((path === "/auth/logout" || path === "/admin/logout") && method === "POST") {
-    clearAuthFromStorage("admin");
-    clearAuthFromStorage("user");
-    currentAdmin = null;
-    currentUser = null;
-    emitAdminAuthChange(null);
-    emitUserAuthChange(null);
+    clearAuthFromStorage(_userType);
+    if (_userType === "admin") { currentAdmin = null; emitAdminAuthChange(null); }
+    else { currentUser = null; emitUserAuthChange(null); }
     return { message: "Logged out" } as T;
   }
 
@@ -373,7 +370,7 @@ export async function getMe(userType: UserType = "user"): Promise<User> {
 
 export async function logout(userType: UserType = "user") {
   try {
-    await api(`/${userType === "admin" ? "admin" : "auth"}/logout`, { method: "POST" });
+    await api(`/${userType === "admin" ? "admin" : "auth"}/logout`, { method: "POST" }, userType);
   } catch {}
   if (isClient()) {
     clearAuthFromStorage(userType);
