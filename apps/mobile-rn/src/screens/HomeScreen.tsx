@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,8 +9,9 @@ import {
   Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { useCategories, useSettings } from "../hooks/useQueries";
+import { useHealthCheck, useCategories, useSettings, useTestEndpoints } from "../hooks/useQueries";
 import { useResponsive } from "../hooks/useResponsive";
+import { Config } from "../config";
 import { User } from "../types";
 import {
   Colors,
@@ -28,7 +29,10 @@ export default function HomeScreen({ user, onLogout }: Props) {
   const navigation = useNavigation();
   const { data: categories, isLoading: loadingCategories } = useCategories();
   const { data: settings, isLoading: loadingSettings } = useSettings();
+  const { data: health } = useHealthCheck();
   const { isDesktop, isTablet, columns, width } = useResponsive();
+  const [showTests, setShowTests] = useState(false);
+  const { data: testResults, isLoading: testing, refetch: runTests } = useTestEndpoints();
 
   const storeName =
     settings?.find((s) => s.setting_key === "store_name")?.setting_value?.replace(/"/g, "") ||
@@ -65,6 +69,39 @@ export default function HomeScreen({ user, onLogout }: Props) {
             <Text style={styles.outlineButtonText}>My Profile</Text>
           </TouchableOpacity>
         </View>
+      </View>
+
+      <View style={[styles.section, { backgroundColor: Config.isProd ? "#f0fdf4" : "#fefce8", padding: Spacing.md, borderRadius: BorderRadius.md, marginBottom: Spacing.lg }]}>
+        <Text style={[styles.sectionTitle, { fontSize: FontSize.md }]}>
+          API: {Config.isProd ? "PRODUCTION" : "DEVELOPMENT"}
+        </Text>
+        <Text style={styles.small}>{Config.apiUrl}</Text>
+        <Text style={styles.small}>
+          Status: {health ? `OK (${health.status})` : "checking..."}
+        </Text>
+      </View>
+
+      <View style={styles.section}>
+        <TouchableOpacity onPress={() => { setShowTests(!showTests); if (!showTests && !testResults) runTests(); }}>
+          <Text style={[styles.sectionTitle, { color: Colors.primary }]}>
+            {showTests ? "Hide" : "Test"} All Endpoints
+          </Text>
+        </TouchableOpacity>
+        {showTests && (
+          testing ? <ActivityIndicator style={{ marginTop: 10 }} /> :
+          testResults ? (
+            <View style={{ marginTop: Spacing.sm }}>
+              {Object.entries(testResults).map(([name, res]: any) => (
+                <View key={name} style={[styles.endpointRow, { backgroundColor: res.ok ? "#f0fdf4" : "#fef2f2" }]}>
+                  <Text style={[styles.endpointName, { flex: 1 }]}>{name}</Text>
+                  <Text style={{ color: res.ok ? Colors.success : Colors.error, fontWeight: "600" }}>
+                    {res.ok ? "PASS" : "FAIL"}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null
+        )}
       </View>
 
       <View style={styles.section}>
@@ -203,6 +240,16 @@ const styles = StyleSheet.create({
   },
   featureTitle: { fontSize: FontSize.lg, fontWeight: Platform.OS === "android" ? "600" : "600", marginBottom: Spacing.xs },
   featureDesc: { fontSize: FontSize.sm, color: Colors.textSecondary },
+  small: { fontSize: FontSize.xs, color: Colors.textSecondary, marginTop: 2 },
+  endpointRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 6,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  endpointName: { fontSize: FontSize.sm, color: Colors.text },
   logoutButton: {
     paddingVertical: 14,
     borderRadius: BorderRadius.sm,

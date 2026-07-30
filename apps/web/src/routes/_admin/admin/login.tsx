@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,27 +34,27 @@ function AdminLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      const data = await adminLogin(email, password);
+  const loginMutation = useMutation({
+    mutationFn: () => adminLogin(email, password),
+    onSuccess: (data) => {
       if (data.user.role !== "admin" && data.user.role !== "superadmin" && data.user.role !== "staff") {
         toast.error("Access denied. Admin only.");
         return;
       }
       toast.success(`Welcome, ${data.user.full_name}`);
       window.location.href = "/admin";
-    } catch (err: any) {
+    },
+    onError: (err: Error) => {
       toast.error(err.message || "Login failed");
-    } finally {
-      setLoading(false);
-    }
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    loginMutation.mutate();
   };
 
   return (
@@ -100,8 +101,8 @@ function AdminLoginPage() {
               <p className="text-sm text-destructive">{error}</p>
             )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+            <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+              {loginMutation.isPending ? "Signing in..." : "Sign In"}
             </Button>
           </form>
         </CardContent>

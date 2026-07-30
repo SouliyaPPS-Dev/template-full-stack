@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Package, Pencil, Trash2, X } from "lucide-react";
+import { Plus, Package, Pencil, Trash2, X, Upload, Image as ImageIcon } from "lucide-react";
 import { api } from "@/services/api";
+import { useImageUpload } from "@/hooks/use-image-upload";
 
 interface Product {
   id: string;
@@ -29,42 +30,32 @@ interface ProductForm {
   cost_price: number;
   stock: number;
   is_active: boolean;
+  images: string[];
 }
 
 const emptyForm: ProductForm = {
   name: "", slug: "", sku: "",
   selling_price: 0, cost_price: 0,
-  stock: 0, is_active: true,
+  stock: 0, is_active: true, images: [],
 };
-
-async function loader() {
-  try {
-    const products = await api<Product[]>("/products", undefined, "admin");
-    return { products };
-  } catch {
-    return { products: [] as Product[] };
-  }
-}
 
 export const Route = createFileRoute("/_admin/admin/products")({
   component: AdminProducts,
-  loader,
 });
 
 function AdminProducts() {
   const queryClient = useQueryClient();
-  const { products: serverProducts } = Route.useLoaderData();
-  const { data: clientProducts, isLoading, isError } = useQuery({
+  const { data: products, isLoading, isError } = useQuery({
     queryKey: ["admin-products"],
     queryFn: () => api<Product[]>("/products", undefined, "admin"),
   });
-
-  const products: Product[] = clientProducts || serverProducts;
 
   useEffect(() => {
     if (isError) toast.error("Failed to load products");
   }, [isError]);
 
+  const { upload, uploading } = useImageUpload();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
@@ -128,6 +119,7 @@ function AdminProducts() {
       cost_price: product.cost_price,
       stock: product.stock,
       is_active: product.is_active,
+      images: product.images || [],
     });
     setError("");
     setShowForm(true);
@@ -284,6 +276,45 @@ function AdminProducts() {
                   id="sku"
                   value={form.sku}
                   onChange={(e) => setForm({ ...form, sku: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Images</Label>
+                <div className="flex flex-wrap gap-2">
+                  {form.images.map((url, i) => (
+                    <div key={i} className="relative group h-16 w-16 rounded-md overflow-hidden border">
+                      <img src={url} alt="" className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => setForm({ ...form, images: form.images.filter((_, j) => j !== i) })}
+                      >
+                        <Trash2 className="h-4 w-4 text-white" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="h-16 w-16 rounded-md border-2 border-dashed flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    {uploading ? <Upload className="h-5 w-5 animate-pulse" /> : <ImageIcon className="h-5 w-5" />}
+                  </button>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const url = await upload(file);
+                    if (url) setForm({ ...form, images: [...form.images, url] });
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
                 />
               </div>
 

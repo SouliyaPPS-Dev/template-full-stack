@@ -35,33 +35,18 @@ function paymentColor(status: string) {
   }
 }
 
-async function loader() {
-  try {
-    const orders = await api<Order[]>("/orders", undefined, "admin");
-    return { orders };
-  } catch {
-    return { orders: [] as Order[] };
-  }
-}
-
 export const Route = createFileRoute("/_admin/admin/orders")({
   component: AdminOrders,
-  loader,
 });
 
 function AdminOrders() {
-  const { orders: serverOrders } = Route.useLoaderData();
-  const { data: clientOrders, isLoading, isError } = useQuery({
+  const { data: orders, isLoading, isError } = useQuery({
     queryKey: ["admin-orders"],
     queryFn: () => api<Order[]>("/orders", undefined, "admin"),
   });
 
-  const orders: Order[] = clientOrders || serverOrders;
-
   useEffect(() => {
-    if (isError) {
-      toast.error("Failed to load orders");
-    }
+    if (isError) toast.error("Failed to load orders");
   }, [isError]);
 
   return (

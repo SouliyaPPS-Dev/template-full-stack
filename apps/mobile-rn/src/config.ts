@@ -9,7 +9,13 @@ const FALLBACK_URL = Platform.select({
   default: "http://localhost:8080/api/v1",
 });
 
+const apiUrl = (extra.apiUrl as string) || FALLBACK_URL;
+const appEnv = (extra.appEnv as string) || "development";
+
 export const Config = {
-  apiUrl: (extra.apiUrl as string) || FALLBACK_URL,
+  apiUrl,
+  appEnv,
+  isDev: appEnv !== "production",
+  isProd: appEnv === "production",
   appName: (extra.appName as string) || "Template",
 };

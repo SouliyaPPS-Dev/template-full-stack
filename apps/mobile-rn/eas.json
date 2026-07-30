@@ -15,22 +15,34 @@
       "distribution": "internal"
     },
     "production": {
+      "env": {
+        "APP_ENV": "production"
+      },
       "android": {
         "buildType": "app-bundle"
       }
     },
     "apk": {
+      "env": {
+        "APP_ENV": "production"
+      },
       "android": {
         "buildType": "apk"
       },
       "distribution": "internal"
     },
     "appbundle": {
+      "env": {
+        "APP_ENV": "production"
+      },
       "android": {
         "buildType": "app-bundle"
       }
     },
     "ipa": {
+      "env": {
+        "APP_ENV": "production"
+      },
       "ios": {
         "autoIncrement": true
       }

@@ -1,5 +1,6 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,26 +42,22 @@ function LoginPage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const loginMutation = useMutation({
+    mutationFn: () => isSignUp ? register(email, password, fullName, phone) : login(email, password),
+    onSuccess: () => {
+      window.location.href = "/";
+    },
+    onError: (err: Error) => {
+      setError(err.message);
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
-
-    try {
-      if (isSignUp) {
-        await register(email, password, fullName, phone);
-      } else {
-        await login(email, password);
-      }
-      window.location.href = "/";
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    loginMutation.mutate();
   };
 
   return (
@@ -107,7 +104,7 @@ function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder="user@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -138,19 +135,35 @@ function LoginPage() {
               <p className="text-sm text-destructive">{error}</p>
             )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Loading..." : isSignUp ? "Create Account" : "Sign In"}
+            <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+              {loginMutation.isPending ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}
             </Button>
           </form>
 
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
-            <button
-              onClick={() => { setIsSignUp(!isSignUp); setError(""); }}
-              className="text-primary underline hover:no-underline"
-            >
-              {isSignUp ? "Sign In" : "Sign Up"}
-            </button>
+          <div className="mt-4 text-center text-sm">
+            {isSignUp ? (
+              <p>
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => { setIsSignUp(false); setError(""); }}
+                  className="text-primary hover:underline font-medium"
+                >
+                  Sign In
+                </button>
+              </p>
+            ) : (
+              <p>
+                Don&apos;t have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => { setIsSignUp(true); setError(""); }}
+                  className="text-primary hover:underline font-medium"
+                >
+                  Create one
+                </button>
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

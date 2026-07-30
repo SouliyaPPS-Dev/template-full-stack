@@ -1,6 +1,24 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "../services/api";
+import { api, healthCheck, testAllEndpoints } from "../services/api";
 import { Product, Category, Order, Setting, User } from "../types";
+
+export function useHealthCheck() {
+  return useQuery({
+    queryKey: ["health"],
+    queryFn: healthCheck,
+    retry: 2,
+    staleTime: 30_000,
+  });
+}
+
+export function useTestEndpoints() {
+  return useQuery({
+    queryKey: ["test-endpoints"],
+    queryFn: testAllEndpoints,
+    retry: false,
+    staleTime: Infinity,
+  });
+}
 
 export function useProducts() {
   return useQuery({

@@ -28,6 +28,9 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       react(),
       VitePWA({
+        strategies: "injectManifest",
+        srcDir: "src",
+        filename: "sw.ts",
         registerType: "autoUpdate",
         includeAssets: ["icon.svg"],
         manifest: {
@@ -45,24 +48,6 @@ export default defineConfig(({ mode }) => {
               sizes: "any",
               type: "image/svg+xml",
               purpose: "any maskable",
-            },
-          ],
-        },
-        workbox: {
-          globDirectory: "dist",
-          globPatterns: ["**/*.{js,css,html,svg,woff,woff2}"],
-          globIgnores: ["**/node_modules/**/*", "sw.js", "workbox-*.js"],
-          runtimeCaching: [
-            {
-              urlPattern: /^https?:\/\/.*\/api\/.*/i,
-              handler: "NetworkFirst",
-              options: {
-                cacheName: "api-cache",
-                expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 5 * 60,
-                },
-              },
             },
           ],
         },

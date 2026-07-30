@@ -1,13 +1,14 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, Mail, Calendar, Shield, Save, ArrowLeft, Loader2 } from "lucide-react";
+import { User, Mail, Calendar, Shield, Save, ArrowLeft, Loader2, Upload, Camera } from "lucide-react";
 import { updateProfile, getMe, getUser, setUser, type User as UserType } from "@/services/api";
+import { useImageUpload } from "@/hooks/use-image-upload";
 
 function isClient(): boolean {
   return typeof window !== "undefined";
@@ -69,8 +70,18 @@ function ProfilePage() {
     }
   }, [user?.created_at]);
 
+  const { upload: uploadImage, uploading: imageUploading } = useImageUpload();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      setAvatarUrl((user as any).avatar_url || "");
+    }
+  }, [user]);
+
   const mutation = useMutation({
-    mutationFn: () => updateProfile({ full_name: fullName, phone }),
+    mutationFn: () => updateProfile({ full_name: fullName, phone, avatar_url: avatarUrl || undefined }),
     onSuccess: (updatedUser) => {
       toast.success("Profile updated successfully!");
       setError("");
@@ -89,6 +100,14 @@ function ProfilePage() {
     setError("");
     setSuccess("");
     mutation.mutate();
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = await uploadImage(file);
+    if (url) setAvatarUrl(url);
+    if (avatarInputRef.current) avatarInputRef.current.value = "";
   };
 
   if (redirecting) {
@@ -121,8 +140,12 @@ function ProfilePage() {
       </div>
 
       <div className="flex items-center gap-3 mb-6 md:mb-8">
-        <div className="h-14 w-14 md:h-16 md:w-16 rounded-full bg-primary/10 flex items-center justify-center">
-          <User className="h-7 w-7 md:h-8 md:w-8 text-primary" />
+        <div className="h-14 w-14 md:h-16 md:w-16 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <User className="h-7 w-7 md:h-8 md:w-8 text-primary" />
+          )}
         </div>
         <div>
           <h1 className="text-xl md:text-2xl font-bold">{user.full_name}</h1>
@@ -169,6 +192,24 @@ function ProfilePage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Avatar</Label>
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <Camera className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()} disabled={imageUploading}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  {imageUploading ? "Uploading..." : "Upload Photo"}
+                </Button>
+                <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
               <Input

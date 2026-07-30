@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart, Store, Tag, ArrowRight, User, Loader2 } from "lucide-react";
-import { api, getApiBase } from "@/services/api";
+import { api } from "@/services/api";
 import { useAuth } from "@/hooks/use-auth";
 
 interface Category {
@@ -18,60 +19,32 @@ interface Setting {
   value: string;
 }
 
-const IS_PRODUCTION = import.meta.env.MODE === "production" || (typeof window !== "undefined" && window.location.hostname !== "localhost");
-
-async function loader() {
-  if (IS_PRODUCTION) {
-    try {
-      const [categories, settings] = await Promise.all([
-        api<Category[]>("/categories"),
-        api<Setting[]>("/settings"),
-      ]);
-      return { categories: categories || [], settings: settings || [] };
-    } catch {
-      return { categories: [], settings: [] };
-    }
-  }
-  const base = getApiBase();
-
-  async function fetchJson<T>(url: string, fallback: T): Promise<T> {
-    try {
-      const res = await fetch(url);
-      if (!res.ok) return fallback;
-      const text = await res.text();
-      if (text.startsWith("<!")) return fallback;
-      return JSON.parse(text) as T;
-    } catch {
-      return fallback;
-    }
-  }
-
-  const [categories, settings] = await Promise.all([
-    fetchJson<Category[]>(`${base}/categories`, []),
-    fetchJson<Setting[]>(`${base}/settings`, []),
-  ]);
-  return { categories, settings };
-}
-
 export const Route = createFileRoute("/_user/")({
   component: HomePage,
-  pendingComponent: () => (
-    <div className="flex items-center justify-center min-h-[50vh]">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
-  ),
-  loader,
 });
 
 function HomePage() {
-  const { categories, settings } = Route.useLoaderData();
   const user = useAuth();
 
+  const { data: categories, isError: catError } = useQuery({
+    queryKey: ["user-categories"],
+    queryFn: () => api<Category[]>("/categories"),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: settings, isError: settingsError } = useQuery({
+    queryKey: ["user-settings"],
+    queryFn: () => api<Setting[]>("/settings"),
+    staleTime: 5 * 60 * 1000,
+  });
+
   useEffect(() => {
-    if (!categories?.length && !settings?.length && IS_PRODUCTION) {
-      toast.error("Failed to load homepage data");
-    }
-  }, [categories, settings]);
+    if (catError) toast.error("Failed to load categories");
+  }, [catError]);
+
+  useEffect(() => {
+    if (settingsError) toast.error("Failed to load settings");
+  }, [settingsError]);
 
   const storeName = settings?.find((s) => s.key === "store_name")?.value || "Template";
 

@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart, Loader2 } from "lucide-react";
-import { api, getApiBase } from "@/services/api";
+import { api } from "@/services/api";
 
 interface Product {
   id: string;
@@ -17,47 +18,28 @@ interface Product {
   is_active: boolean;
 }
 
-const IS_PRODUCTION = import.meta.env.MODE === "production" || (typeof window !== "undefined" && window.location.hostname !== "localhost");
-
-async function loader() {
-  if (IS_PRODUCTION) {
-    try {
-      const products = await api<Product[]>("/products");
-      return { products };
-    } catch {
-      return { products: [] as Product[] };
-    }
-  }
-  const base = getApiBase();
-  try {
-    const res = await fetch(`${base}/products`);
-    if (!res.ok) return { products: [] as Product[] };
-    const text = await res.text();
-    if (text.startsWith("<!")) return { products: [] as Product[] };
-    return { products: JSON.parse(text) as Product[] };
-  } catch {
-    return { products: [] as Product[] };
-  }
-}
-
 export const Route = createFileRoute("/_user/products")({
   component: ProductsPage,
-  pendingComponent: () => (
-    <div className="flex items-center justify-center min-h-[50vh]">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
-  ),
-  loader,
 });
 
 function ProductsPage() {
-  const { products } = Route.useLoaderData();
+  const { data: products, isLoading, isError } = useQuery({
+    queryKey: ["user-products"],
+    queryFn: () => api<Product[]>("/products"),
+    staleTime: 2 * 60 * 1000,
+  });
 
   useEffect(() => {
-    if (!products?.length && IS_PRODUCTION) {
-      toast.error("Failed to load products");
-    }
-  }, [products]);
+    if (isError) toast.error("Failed to load products");
+  }, [isError]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div>

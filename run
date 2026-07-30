@@ -110,6 +110,17 @@ case "$1" in
     ;;
   rn|mobile-rn)
     case "$2" in
+      dev)
+        start_api
+        echo -e "${G}Starting React Native in DEV mode (local API :8080)...${NC}"
+        echo -e "${G}API: http://10.238.134.232:8080${NC}"
+        cd "$DIR/apps/mobile-rn" && APP_ENV=development npx expo start
+        ;;
+      prod)
+        echo -e "${G}Starting React Native in PRODUCTION mode (HF API)...${NC}"
+        echo -e "${G}API: https://souliya-template.hf.space/api/v1${NC}"
+        cd "$DIR/apps/mobile-rn" && APP_ENV=production npx expo start
+        ;;
       apk)
         echo -e "${G}Building Android APK (local)...${NC}"
         cd "$DIR/apps/mobile-rn" && bash scripts/build.sh apk

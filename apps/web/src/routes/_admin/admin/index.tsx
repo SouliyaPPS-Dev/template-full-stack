@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,36 +24,32 @@ interface Order {
   created_at: string;
 }
 
-async function loader() {
-  try {
-    const [stats, orders] = await Promise.all([
-      api<DashboardStats>("/dashboard/stats", undefined, "admin"),
-      api<Order[]>("/orders", undefined, "admin"),
-    ]);
-    return { stats, orders };
-  } catch {
-    return { stats: null as DashboardStats | null, orders: [] as Order[] };
-  }
-}
-
 export const Route = createFileRoute("/_admin/admin/")({
   component: AdminDashboard,
-  pendingComponent: () => (
-    <div className="flex items-center justify-center min-h-[50vh]">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
-  ),
-  loader,
 });
 
 function AdminDashboard() {
-  const { stats, orders } = Route.useLoaderData();
+  const { data: stats, isLoading: statsLoading, isError: statsError } = useQuery({
+    queryKey: ["admin-dashboard-stats"],
+    queryFn: () => api<DashboardStats>("/dashboard/stats", undefined, "admin"),
+    staleTime: 60 * 1000,
+  });
+
+  const { data: recentOrders, isError: ordersError } = useQuery({
+    queryKey: ["admin-dashboard-orders"],
+    queryFn: () => api<Order[]>("/orders", undefined, "admin"),
+    staleTime: 60 * 1000,
+  });
 
   useEffect(() => {
-    if (!stats) {
-      toast.error("Failed to load dashboard data");
-    }
-  }, [stats]);
+    if (statsError) toast.error("Failed to load dashboard stats");
+  }, [statsError]);
+
+  useEffect(() => {
+    if (ordersError) toast.error("Failed to load recent orders");
+  }, [ordersError]);
+
+  const orders = recentOrders?.slice(0, 10);
 
   const statCards = [
     { label: "Total Revenue", value: `$${(stats?.total_revenue || 0).toLocaleString()}`, icon: DollarSign },
@@ -60,6 +57,14 @@ function AdminDashboard() {
     { label: "Products", value: String(stats?.total_products || 0), icon: Package },
     { label: "Users", value: String(stats?.total_users || 0), icon: Users },
   ];
+
+  if (statsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -96,7 +101,7 @@ function AdminDashboard() {
         <CardContent>
           {orders && orders.length > 0 ? (
             <div className="space-y-3">
-              {orders.slice(0, 10).map((order) => (
+              {orders.map((order) => (
                 <div key={order.id} className="flex items-center justify-between border-b pb-3 last:border-0">
                   <div>
                     <p className="font-medium text-sm">{order.order_number}</p>

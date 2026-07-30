@@ -1,8 +1,10 @@
 import { createFileRoute, Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { useState, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Store, ShoppingCart, LogIn, UserPlus, User, LogOut, Menu, X, Loader2 } from "lucide-react";
+import { InstallButton } from "@/components/install-button";
 import { logout as apiLogout, getMe, getUser, setUser } from "@/services/api";
 
 export const Route = createFileRoute("/_user")({
@@ -13,7 +15,7 @@ function UserLayout() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const { data: user } = useQuery({
+  const { data: user, isError } = useQuery({
     queryKey: ["auth-user"],
     queryFn: async () => {
       const u = await getMe("user");
@@ -23,6 +25,10 @@ function UserLayout() {
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
+
+  useEffect(() => {
+    if (isError) toast.error("Session expired. Please login again.");
+  }, [isError]);
 
   const handleLogout = useCallback(() => {
     apiLogout("user");
@@ -43,6 +49,7 @@ function UserLayout() {
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-2">
+            <InstallButton />
             <Button asChild variant="ghost" size="sm">
               <Link to="/products">Products</Link>
             </Button>
@@ -98,6 +105,7 @@ function UserLayout() {
         {menuOpen && (
           <div className="md:hidden border-t bg-background">
             <nav className="container mx-auto px-4 py-3 flex flex-col gap-2">
+              <InstallButton className="flex items-center gap-2 px-3 py-2 text-sm hover:text-primary transition-colors justify-start" />
               <Button asChild variant="ghost" size="sm" className="justify-start" onClick={closeMenu}>
                 <Link to="/products">Products</Link>
               </Button>

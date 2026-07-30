@@ -1,13 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Users, Pencil, Trash2, X, Eye, EyeOff } from "lucide-react";
+import { Plus, Users, Pencil, Trash2, X, Eye, EyeOff, Upload } from "lucide-react";
 import { api } from "@/services/api";
+import { useImageUpload } from "@/hooks/use-image-upload";
 
 interface User {
   id: string;
@@ -15,6 +16,7 @@ interface User {
   full_name: string;
   phone: string;
   role: string;
+  avatar_url?: string;
   email_verified: boolean;
   is_active: boolean;
   created_at: string;
@@ -26,9 +28,10 @@ interface UserForm {
   full_name: string;
   phone: string;
   role: string;
+  avatar_url: string;
 }
 
-const emptyForm: UserForm = { email: "", password: "", full_name: "", phone: "", role: "user" };
+const emptyForm: UserForm = { email: "", password: "", full_name: "", phone: "", role: "user", avatar_url: "" };
 
 function roleColor(role: string) {
   switch (role) {
@@ -45,16 +48,22 @@ export const Route = createFileRoute("/_admin/admin/users")({
 
 function AdminUsers() {
   const queryClient = useQueryClient();
+  const { upload: uploadImage, uploading: imageUploading } = useImageUpload();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form, setForm] = useState<UserForm>(emptyForm);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const { data: users, isLoading } = useQuery({
+  const { data: users, isLoading, isError } = useQuery({
     queryKey: ["admin-users"],
     queryFn: () => api<User[]>("/users", undefined, "admin"),
   });
+
+  useEffect(() => {
+    if (isError) toast.error("Failed to load users");
+  }, [isError]);
 
   const createMutation = useMutation({
     mutationFn: (data: UserForm) => api<User>("/users", {
@@ -109,6 +118,7 @@ function AdminUsers() {
       full_name: user.full_name,
       phone: user.phone,
       role: user.role,
+      avatar_url: user.avatar_url || "",
     });
     setError("");
     setShowPassword(false);
@@ -132,6 +142,7 @@ function AdminUsers() {
         full_name: form.full_name,
         phone: form.phone,
         role: form.role,
+        avatar_url: form.avatar_url,
       };
       updateMutation.mutate({ id: editingUser.id, data });
     } else {
@@ -186,8 +197,12 @@ function AdminUsers() {
                     <tr key={user.id} className="border-b last:border-0 hover:bg-muted/30">
                       <td className="p-3">
                         <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-medium">
-                            {user.full_name.charAt(0).toUpperCase()}
+                          <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-medium overflow-hidden">
+                            {user.avatar_url ? (
+                              <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              user.full_name.charAt(0).toUpperCase()
+                            )}
                           </div>
                           <div className="min-w-0">
                             <p className="font-medium truncate">{user.full_name}</p>
@@ -275,6 +290,30 @@ function AdminUsers() {
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Avatar</Label>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                    {form.avatar_url ? (
+                      <img src={form.avatar_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <Users className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()} disabled={imageUploading}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    {imageUploading ? "Uploading..." : "Upload"}
+                  </Button>
+                  <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const url = await uploadImage(file);
+                    if (url) setForm({ ...form, avatar_url: url });
+                    if (avatarInputRef.current) avatarInputRef.current.value = "";
+                  }} />
+                </div>
               </div>
 
               {!editingUser && (

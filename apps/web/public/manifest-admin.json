@@ -1,0 +1,18 @@
+{
+  "name": "Template - Admin Panel",
+  "short_name": "Template Admin",
+  "description": "Admin panel for Template e-commerce platform",
+  "start_url": "/admin/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#171717",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

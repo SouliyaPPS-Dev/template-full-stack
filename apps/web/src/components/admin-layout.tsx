@@ -1,9 +1,9 @@
 import { Link, useLocation, Outlet, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { LayoutDashboard, Package, ShoppingCart, Users, Settings, Store, LogOut, User } from "lucide-react";
+import { InstallButton } from "@/components/install-button";
 import { cn } from "@/lib/utils";
-import { adminLogout, getMe, setUser } from "@/services/api";
+import { adminLogout } from "@/services/api";
+import { useAuth } from "@/hooks/use-auth";
 
 const navItems = [
   { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
@@ -21,24 +21,7 @@ function isActive(pathname: string, path: string) {
 export function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-
-  const { data: user, isError } = useQuery({
-    queryKey: ["admin-auth"],
-    queryFn: async () => {
-      const u = await getMe("admin");
-      setUser(u, "admin");
-      return u;
-    },
-    staleTime: 5 * 60 * 1000,
-    retry: false,
-  });
-
-  useEffect(() => {
-    if (isError) {
-      adminLogout();
-      navigate({ to: "/admin/login", replace: true });
-    }
-  }, [isError, navigate]);
+  const user = useAuth("admin");
 
   function handleLogout() {
     adminLogout();
@@ -72,6 +55,7 @@ export function AdminLayout() {
           ))}
         </nav>
         <div className="p-4 border-t border-primary-foreground/20 space-y-3">
+          <InstallButton admin className="flex items-center gap-2 text-sm text-primary-foreground/50 hover:text-primary-foreground transition-colors w-full" />
           {user && (
             <div className="flex items-center gap-2 text-sm text-primary-foreground/80">
               <div className="h-8 w-8 rounded-full bg-primary-foreground/20 flex items-center justify-center shrink-0">
