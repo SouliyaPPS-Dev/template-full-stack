@@ -329,7 +329,7 @@ export async function login(email: string, password: string): Promise<AuthRespon
   const data = await api<AuthResponse>("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
-  });
+  }, "user");
   if (isClient() && data.access_token) {
     saveAuthToStorage(data.access_token, data.user, "user");
     currentUser = data.user;
@@ -342,7 +342,7 @@ export async function adminLogin(email: string, password: string): Promise<AuthR
   const data = await api<AuthResponse>("/admin/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
-  });
+  }, "admin");
   if (isClient() && data.access_token) {
     saveAuthToStorage(data.access_token, data.user, "admin");
     currentAdmin = data.user;
@@ -355,7 +355,7 @@ export async function register(email: string, password: string, fullName: string
   const data = await api<AuthResponse>("/auth/register", {
     method: "POST",
     body: JSON.stringify({ email, password, full_name: fullName, phone }),
-  });
+  }, "user");
   if (isClient() && data.access_token) {
     saveAuthToStorage(data.access_token, data.user, "user");
     currentUser = data.user;
