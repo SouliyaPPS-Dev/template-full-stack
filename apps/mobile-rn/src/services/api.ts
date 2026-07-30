@@ -45,7 +45,7 @@ const API_URL_KEY = "user_token_api_url";
 async function getToken(): Promise<string | null> {
   if (_token) {
     const storedUrl = await AsyncStorage.getItem(API_URL_KEY).catch(() => null);
-    if (storedUrl !== API_BASE) {
+    if (storedUrl !== null && storedUrl !== API_BASE) {
       _token = null;
       await clearStoredAuth();
       return null;
@@ -54,7 +54,7 @@ async function getToken(): Promise<string | null> {
   }
   try {
     const storedUrl = await AsyncStorage.getItem(API_URL_KEY).catch(() => null);
-    if (storedUrl && storedUrl !== API_BASE) {
+    if (storedUrl !== null && storedUrl !== API_BASE) {
       await clearStoredAuth();
       return null;
     }
