@@ -35,7 +35,7 @@ def init_db():
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,
-            full_name TEXT NOT NULL, phone TEXT DEFAULT '', role TEXT DEFAULT 'user',
+            full_name TEXT NOT NULL, phone TEXT DEFAULT '', avatar_url TEXT DEFAULT '', role TEXT DEFAULT 'user',
             is_active INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')),
             updated_at TEXT DEFAULT (datetime('now'))
         );
@@ -66,6 +66,8 @@ def init_db():
                 "INSERT INTO orders (id,order_number,user_id,status,payment_status,grand_total) VALUES (?,?,?,?,?,?)",
                 (str(uuid.uuid4()), f"ORD-{int(time.time()*1000)}-{i}", uid,
                  statuses[i % len(statuses)], "paid" if i % 2 == 0 else "unpaid", round(50 + i * 30.5, 2)))
+    try: conn.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT ''")
+    except: pass
     conn.commit(); conn.close()
 
 # ── Token helpers ──
@@ -217,8 +219,8 @@ if __name__ == "__main__":
     class LoginReq(BaseModel): email: str; password: str
     class RegisterReq(BaseModel): email: str; password: str; full_name: str; phone: str = ""
     class ProductReq(BaseModel): name: str; slug: str; sku: str = ""; category_id: str = ""; selling_price: float = 0; cost_price: float = 0; stock: int = 0; images: list[str] = []
-    class CreateUserReq(BaseModel): email: str; password: str; full_name: str; phone: str = ""; role: str = "user"
-    class UpdateUserReq(BaseModel): full_name: str | None = None; phone: str | None = None; role: str | None = None; is_active: bool | None = None
+    class CreateUserReq(BaseModel): email: str; password: str; full_name: str; phone: str = ""; role: str = "user"; avatar_url: str = ""
+    class UpdateUserReq(BaseModel): full_name: str | None = None; phone: str | None = None; role: str | None = None; is_active: bool | None = None; avatar_url: str | None = None
 
     @app.get("/api/v1/health")
     def rest_health():
@@ -253,6 +255,27 @@ if __name__ == "__main__":
     def api_me(request: Request):
         user = get_current_user(_bearer_token(request))
         return user
+
+    class ProfileUpdateReq(BaseModel):
+        full_name: str | None = None
+        phone: str | None = None
+        avatar_url: str | None = None
+
+    @app.put("/api/v1/auth/me")
+    def api_update_me(data: ProfileUpdateReq, request: Request):
+        user = get_current_user(_bearer_token(request))
+        conn = get_db()
+        updates = {}
+        if data.full_name is not None: updates["full_name"] = data.full_name
+        if data.phone is not None: updates["phone"] = data.phone
+        if data.avatar_url is not None: updates["avatar_url"] = data.avatar_url
+        if updates:
+            set_clause = ", ".join(f"{k}=?" for k in updates)
+            conn.execute(f"UPDATE users SET {set_clause} WHERE id=?", (*updates.values(), user["id"]))
+            conn.commit()
+        row = conn.execute("SELECT id,email,full_name,phone,role,is_active,created_at FROM users WHERE id=?", (user["id"],)).fetchone()
+        conn.close()
+        return _format_user(row)
 
     @app.post("/api/v1/auth/refresh")
     def api_refresh(request: Request):
@@ -363,7 +386,8 @@ if __name__ == "__main__":
 
     def _format_user(row: sqlite3.Row) -> dict:
         return {"id": row["id"], "email": row["email"], "full_name": row["full_name"],
-                "phone": row["phone"], "role": row["role"], "is_active": bool(row["is_active"]),
+                "phone": row["phone"], "avatar_url": row["avatar_url"] or "" if "avatar_url" in row.keys() else "",
+                "role": row["role"], "is_active": bool(row["is_active"]),
                 "email_verified": False, "created_at": row["created_at"]}
 
     @app.get("/api/v1/users")
@@ -384,10 +408,10 @@ if __name__ == "__main__":
             conn.close(); raise HTTPException(409, "email already registered")
         uid = str(uuid.uuid4())
         hashed = hash_password(data.password)
-        conn.execute("INSERT INTO users (id,email,password_hash,full_name,phone,role,is_active) VALUES (?,?,?,?,?,?,?)",
-            (uid, data.email.lower(), hashed, data.full_name, data.phone, data.role, 1))
+        conn.execute("INSERT INTO users (id,email,password_hash,full_name,phone,role,is_active,avatar_url) VALUES (?,?,?,?,?,?,?,?)",
+            (uid, data.email.lower(), hashed, data.full_name, data.phone, data.role, 1, data.avatar_url))
         conn.commit()
-        row = conn.execute("SELECT id,email,full_name,phone,role,is_active,created_at FROM users WHERE id=?", (uid,)).fetchone()
+        row = conn.execute("SELECT id,email,full_name,phone,role,is_active,created_at,avatar_url FROM users WHERE id=?", (uid,)).fetchone()
         conn.close()
         return _format_user(row)
 
@@ -403,11 +427,12 @@ if __name__ == "__main__":
         if data.phone is not None: updates["phone"] = data.phone
         if data.role is not None: updates["role"] = data.role
         if data.is_active is not None: updates["is_active"] = 1 if data.is_active else 0
+        if data.avatar_url is not None: updates["avatar_url"] = data.avatar_url
         if updates:
             set_clause = ", ".join(f"{k}=?" for k in updates)
             conn.execute(f"UPDATE users SET {set_clause} WHERE id=?", (*updates.values(), uid))
             conn.commit()
-        row = conn.execute("SELECT id,email,full_name,phone,role,is_active,created_at FROM users WHERE id=?", (uid,)).fetchone()
+        row = conn.execute("SELECT id,email,full_name,phone,role,is_active,created_at,avatar_url FROM users WHERE id=?", (uid,)).fetchone()
         conn.close()
         return _format_user(row)
 
