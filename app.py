@@ -357,6 +357,49 @@ if __name__ == "__main__":
         conn.commit(); conn.close()
         return {"id": pid, "name": data.name, "slug": data.slug, "selling_price": data.selling_price, "stock": data.stock}
 
+    class ProductUpdateReq(BaseModel):
+        name: str | None = None; slug: str | None = None; sku: str | None = None
+        category_id: str | None = None; selling_price: float | None = None
+        cost_price: float | None = None; stock: int | None = None
+        images: list[str] | None = None; is_active: bool | None = None
+
+    @app.put("/api/v1/products/{pid}")
+    def api_update_product(pid: str, data: ProductUpdateReq, request: Request):
+        user = get_current_user(_bearer_token(request))
+        if user["role"] not in ("admin", "superadmin"):
+            raise HTTPException(403, "admin required")
+        conn = get_db()
+        existing = conn.execute("SELECT * FROM products WHERE id=? AND deleted_at IS NULL", (pid,)).fetchone()
+        if not existing: conn.close(); raise HTTPException(404, "product not found")
+        updates = {}
+        if data.name is not None: updates["name"] = data.name
+        if data.slug is not None: updates["slug"] = data.slug
+        if data.sku is not None: updates["sku"] = data.sku
+        if data.category_id is not None: updates["category_id"] = data.category_id
+        if data.selling_price is not None: updates["selling_price"] = data.selling_price
+        if data.cost_price is not None: updates["cost_price"] = data.cost_price
+        if data.stock is not None: updates["stock"] = data.stock
+        if data.images is not None: updates["images"] = json.dumps(data.images)
+        if data.is_active is not None: updates["is_active"] = 1 if data.is_active else 0
+        if updates:
+            set_clause = ", ".join(f"{k}=?" for k in updates)
+            conn.execute(f"UPDATE products SET {set_clause} WHERE id=?", (*updates.values(), pid))
+            conn.commit()
+        conn.close()
+        return db_products()
+
+    @app.delete("/api/v1/products/{pid}")
+    def api_delete_product(pid: str, request: Request):
+        user = get_current_user(_bearer_token(request))
+        if user["role"] not in ("admin", "superadmin"):
+            raise HTTPException(403, "admin required")
+        conn = get_db()
+        existing = conn.execute("SELECT * FROM products WHERE id=? AND deleted_at IS NULL", (pid,)).fetchone()
+        if not existing: conn.close(); raise HTTPException(404, "product not found")
+        conn.execute("UPDATE products SET deleted_at=datetime('now') WHERE id=?", (pid,))
+        conn.commit(); conn.close()
+        return {"message": "product deleted"}
+
     @app.post("/api/v1/upload")
     def api_upload(request: Request, file: UploadFile = File(...)):
         user = get_current_user(_bearer_token(request))
