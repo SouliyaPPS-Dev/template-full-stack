@@ -1,4 +1,4 @@
-import json, os, uuid, sqlite3, time
+import json, os, uuid, sqlite3, time, base64
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import Any
@@ -18,6 +18,8 @@ from pydantic import BaseModel
 DB_PATH = "/data/app.db"
 JWT_SECRET = os.environ.get("JWT_SECRET", "super-secret-key-change-in-production")
 JWT_ALGORITHM = "HS256"
+IMAGEKIT_PRIVATE_KEY = os.environ.get("IMAGEKIT_PRIVATE_KEY", "")
+IMAGEKIT_URL_ENDPOINT = os.environ.get("IMAGEKIT_URL_ENDPOINT", "https://ik.imagekit.io/ceo2gbv21")
 JWT_EXPIRE_HOURS = 24 * 30
 dist = Path("dist")
 
@@ -331,6 +333,24 @@ if __name__ == "__main__":
             (pid, data.name, data.slug, data.sku, data.category_id, data.selling_price, data.cost_price, data.stock, json.dumps(data.images), 1))
         conn.commit(); conn.close()
         return {"id": pid, "name": data.name, "slug": data.slug, "selling_price": data.selling_price, "stock": data.stock}
+
+    @app.post("/api/v1/upload")
+    def api_upload(request: Request, file: UploadFile = File(...)):
+        user = get_current_user(_bearer_token(request))
+        IMAGEKIT_PRIVATE_KEY = os.environ.get("IMAGEKIT_PRIVATE_KEY", "")
+        if not IMAGEKIT_PRIVATE_KEY:
+            raise HTTPException(500, "ImageKit not configured")
+        import requests
+        auth = base64.b64encode(f"{IMAGEKIT_PRIVATE_KEY}:".encode()).decode()
+        resp = requests.post(
+            "https://upload.imagekit.io/api/v1/files/upload",
+            headers={"Authorization": f"Basic {auth}"},
+            files={"file": (file.filename, file.file, file.content_type or "application/octet-stream")},
+            data={"fileName": file.filename or "upload", "folder": "/template"},
+        )
+        if not resp.ok:
+            raise HTTPException(500, f"ImageKit upload failed: {resp.text}")
+        return resp.json()
 
     @app.get("/api/v1/categories")
     def api_categories(): return []
