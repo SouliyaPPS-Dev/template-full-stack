@@ -257,18 +257,7 @@ async function gradioApiCaller<T>(path: string, options?: RequestInit, _userType
     return (saved?.user || null) as T;
   }
 
-  // /auth/me PUT: update localStorage
-  if (path === "/auth/me" && method === "PUT") {
-    const saved = loadAuthFromStorage(_userType);
-    if (!saved) throw new Error("Unauthorized");
-    const updated: User = { ...saved.user, ...(options?.body ? JSON.parse(options.body as string) : {}) };
-    saveAuthToStorage(saved.token, updated, _userType);
-    if (_userType === "admin") { currentAdmin = updated; emitAdminAuthChange(updated); }
-    else { currentUser = updated; emitUserAuthChange(updated); }
-    return updated as T;
-  }
-
-  // For all other endpoints: call the REST API directly
+  // For all endpoints: call the REST API directly
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...((options?.headers as Record<string, string>) || {}),
@@ -298,6 +287,18 @@ async function gradioApiCaller<T>(path: string, options?: RequestInit, _userType
       emitUserAuthChange(authRes.user);
     }
     return authRes as T;
+  }
+
+  // Handle /auth/me PUT response: update localStorage with fresh API data
+  if (path === "/auth/me" && method === "PUT" && res.ok) {
+    const updated = await res.json() as User;
+    const saved = loadAuthFromStorage(_userType);
+    if (saved) {
+      saveAuthToStorage(saved.token, updated, _userType);
+      if (_userType === "admin") { currentAdmin = updated; emitAdminAuthChange(updated); }
+      else { currentUser = updated; emitUserAuthChange(updated); }
+    }
+    return updated as T;
   }
 
   if (!res.ok) {
