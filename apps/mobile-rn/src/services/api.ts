@@ -4,6 +4,8 @@ import { AuthResponse, User } from "../types";
 
 const API_BASE = Config.apiUrl;
 
+const REFRESH_BEFORE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+
 export async function healthCheck(): Promise<{ status: string }> {
   const res = await fetch(`${API_BASE}/health`);
   if (!res.ok) throw new Error(`Health check failed: ${res.status}`);
@@ -16,22 +18,39 @@ export function getApiBase(): string {
 
 let _token: string | null = null;
 
+type AuthExpiredListener = () => void;
+const authExpiredListeners = new Set<AuthExpiredListener>();
+
+export function onSessionExpired(listener: AuthExpiredListener): () => void {
+  authExpiredListeners.add(listener);
+  return () => {
+    authExpiredListeners.delete(listener);
+  };
+}
+
+function notifySessionExpired(): void {
+  authExpiredListeners.forEach((fn) => fn());
+}
+
 function base64Decode(str: string): string {
   try {
+    const b64url = str.replace(/-/g, "+").replace(/_/g, "/");
+    const b64 = b64url + "=".repeat((4 - (b64url.length % 4)) % 4);
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
     let result = "";
-    let i = 0;
-    str = str.replace(/[^A-Za-z0-9+/=]/g, "");
-    while (i < str.length) {
-      const a = chars.indexOf(str.charAt(i++));
-      const b = chars.indexOf(str.charAt(i++));
-      const c = chars.indexOf(str.charAt(i++));
-      const d = chars.indexOf(str.charAt(i++));
-      result += String.fromCharCode(
-        ((a << 2) | (b >> 4)) & 255,
-        ((b & 15) << 4) | (c >> 2),
-        c === 64 ? 0 : ((c & 3) << 6) | d
-      );
+    for (let i = 0; i < b64.length; i += 4) {
+      const a = chars.indexOf(b64.charAt(i));
+      const b = chars.indexOf(b64.charAt(i + 1));
+      const c = chars.indexOf(b64.charAt(i + 2));
+      const d = chars.indexOf(b64.charAt(i + 3));
+      if (a < 0 || b < 0) return "";
+      result += String.fromCharCode((a << 2) | (b >> 4));
+      if (c !== 64) {
+        result += String.fromCharCode(((b & 15) << 4) | (c >> 2));
+        if (d !== 64) {
+          result += String.fromCharCode(((c & 3) << 6) | d);
+        }
+      }
     }
     return result;
   } catch {
@@ -40,24 +59,10 @@ function base64Decode(str: string): string {
 }
 
 const TOKEN_KEY = "user_token";
-const API_URL_KEY = "user_token_api_url";
 
 async function getToken(): Promise<string | null> {
-  if (_token) {
-    const storedUrl = await AsyncStorage.getItem(API_URL_KEY).catch(() => null);
-    if (storedUrl !== null && storedUrl !== API_BASE) {
-      _token = null;
-      await clearStoredAuth();
-      return null;
-    }
-    return _token;
-  }
+  if (_token) return _token;
   try {
-    const storedUrl = await AsyncStorage.getItem(API_URL_KEY).catch(() => null);
-    if (storedUrl !== null && storedUrl !== API_BASE) {
-      await clearStoredAuth();
-      return null;
-    }
     _token = await AsyncStorage.getItem(TOKEN_KEY);
   } catch {
     _token = null;
@@ -68,21 +73,50 @@ async function getToken(): Promise<string | null> {
 async function clearStoredAuth(): Promise<void> {
   _token = null;
   try {
-    await AsyncStorage.multiRemove([TOKEN_KEY, API_URL_KEY, "user"]);
+    await AsyncStorage.multiRemove([TOKEN_KEY, "user"]);
   } catch {}
+}
+
+let _refreshPromise: Promise<string | null> | null = null;
+
+async function refreshToken(): Promise<string | null> {
+  if (_refreshPromise) return _refreshPromise;
+  _refreshPromise = (async () => {
+    const token = await getToken();
+    if (!token) return null;
+    try {
+      const res = await fetch(`${API_BASE}/auth/refresh`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data.access_token) {
+        await saveToken(data.access_token);
+        return data.access_token;
+      }
+      return null;
+    } catch {
+      return null;
+    } finally {
+      _refreshPromise = null;
+    }
+  })();
+  return _refreshPromise;
 }
 
 async function saveToken(token: string): Promise<void> {
   _token = token;
   try {
-    await AsyncStorage.multiSet([
-      [TOKEN_KEY, token],
-      [API_URL_KEY, API_BASE],
-    ]);
+    await AsyncStorage.setItem(TOKEN_KEY, token);
   } catch {}
 }
 
 export async function api<T>(path: string, options?: RequestInit): Promise<T> {
+  const isAuthPath = path === "/auth/login" || path === "/auth/register";
   const token = await getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -92,11 +126,24 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  let res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+
+  if (res.status === 401 && !isAuthPath && token) {
+    const newToken = await refreshToken();
+    if (newToken) {
+      headers["Authorization"] = `Bearer ${newToken}`;
+      res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+    }
+  }
 
   if (res.status === 401) {
-    await clearStoredAuth();
-    throw new Error("Unauthorized");
+    if (!isAuthPath && token) {
+      await clearStoredAuth();
+      notifySessionExpired();
+      throw new Error("Session expired. Please log in again.");
+    }
+    const err = await res.json().catch(() => ({ error: "Unauthorized" }));
+    throw new Error(err.error || "Unauthorized");
   }
 
   if (!res.ok) {
@@ -196,23 +243,28 @@ export async function testAllEndpoints(): Promise<Record<string, { ok: boolean; 
 }
 
 export async function isAuthenticated(): Promise<boolean> {
+  const token = await getToken();
+  if (!token) return false;
+  const parts = token.split(".");
+  if (parts.length !== 3) return false;
+  const payloadStr = base64Decode(parts[1]);
+  if (!payloadStr) return false;
   try {
-    const token = await getToken();
-    if (!token) return false;
-    const parts = token.split(".");
-    if (parts.length !== 3) return false;
-    const payloadStr = base64Decode(parts[1]);
-    if (!payloadStr) return false;
     const payload = JSON.parse(payloadStr);
-    if (payload.exp && Date.now() >= payload.exp * 1000) {
-      await logout();
-      return false;
+    const expMs = payload.exp ? payload.exp * 1000 : 0;
+    // Never force logout because of token expiry. If the token is expired or
+    // close to expiring, silently refresh it to keep the session alive. The
+    // session only ends when the user logs out manually (or the token becomes
+    // truly invalid, which the API layer surfaces via /auth/refresh).
+    if (expMs && Date.now() >= expMs - REFRESH_BEFORE_EXPIRY_MS) {
+      try {
+        await refreshToken();
+      } catch {
+        // best effort — api() will refresh again on the first 401
+      }
     }
     return true;
   } catch {
-    try {
-      await logout();
-    } catch {}
     return false;
   }
 }

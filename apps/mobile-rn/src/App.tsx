@@ -18,6 +18,7 @@ import {
   getStoredUser,
   isAuthenticated as checkAuth,
   getMe,
+  onSessionExpired,
 } from "./services/api";
 import { User } from "./types";
 import LoginScreen from "./screens/LoginScreen";
@@ -68,19 +69,18 @@ function RootNavigator() {
         if (cancelled) return;
         if (authed) {
           try {
-            const stored = await getStoredUser();
+            const fresh = await getMe();
             if (cancelled) return;
-            setUser(stored);
-            if (!stored) {
-              try {
-                const fresh = await getMe();
-                if (!cancelled) setUser(fresh);
-              } catch {
-                if (!cancelled) setUser(null);
-              }
+            setUser(fresh);
+          } catch (err: any) {
+            if (cancelled) return;
+            const isAuthError =
+              err?.message?.includes("Session expired") ||
+              err?.message?.includes("Unauthorized");
+            if (!isAuthError) {
+              const stored = await getStoredUser();
+              if (!cancelled) setUser(stored);
             }
-          } catch {
-            if (!cancelled) setUser(null);
           }
         }
       } catch {
@@ -91,6 +91,18 @@ function RootNavigator() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    return onSessionExpired(() => {
+      setUser(null);
+      queryClient.resetQueries();
+      try {
+        if (navRef.isReady()) {
+          navRef.resetRoot({ index: 0, routes: [{ name: "Login" }] });
+        }
+      } catch {}
+    });
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -113,11 +125,16 @@ function RootNavigator() {
       await apiLogout();
     } catch {}
     setUser(null);
+    queryClient.resetQueries();
     try {
       if (navRef.isReady()) {
         navRef.resetRoot({ index: 0, routes: [{ name: "Login" }] });
       }
     } catch {}
+  }, []);
+
+  const handleUserUpdate = useCallback((updated: User) => {
+    setUser(updated);
   }, []);
 
   if (loading) {
@@ -157,7 +174,7 @@ function RootNavigator() {
         />
         <Stack.Screen name="Profile" options={{ title: "My Profile" }}>
           {() => (
-            <ProfileScreen user={user} onLogout={logout} />
+            <ProfileScreen user={user} onLogout={logout} onUserUpdate={handleUserUpdate} />
           )}
         </Stack.Screen>
         <Stack.Screen

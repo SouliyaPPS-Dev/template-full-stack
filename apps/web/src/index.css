@@ -1,33 +1,115 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap");
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  --color-background: #ffffff;
-  --color-foreground: #0a0a0a;
-  --color-muted: #f5f5f5;
-  --color-muted-foreground: #737373;
-  --color-border: #e5e5e5;
-  --color-primary: #171717;
-  --color-primary-foreground: #fafafa;
-  --color-secondary: #f5f5f5;
-  --color-secondary-foreground: #171717;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: #fafaf9;
+  --color-foreground: #18181b;
+  --color-card: #ffffff;
+  --color-card-foreground: #18181b;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #18181b;
+  --color-muted: #f4f4f5;
+  --color-muted-foreground: #71717a;
+  --color-border: #e4e4e7;
+  --color-input: #e4e4e7;
+  --color-primary: #4f46e5;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #eef2ff;
+  --color-secondary-foreground: #4338ca;
+  --color-accent: #f4f4f5;
+  --color-accent-foreground: #18181b;
   --color-destructive: #ef4444;
-  --color-destructive-foreground: #fafafa;
-  --color-accent: #f5f5f5;
-  --color-accent-foreground: #171717;
-  --color-ring: #171717;
-  --color-input: #e5e5e5;
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
+  --color-destructive-foreground: #ffffff;
+  --color-success: #16a34a;
+  --color-success-foreground: #ffffff;
+  --color-warning: #f59e0b;
+  --color-warning-foreground: #ffffff;
+  --color-ring: #4f46e5;
+  --color-chart-1: #4f46e5;
+  --color-chart-2: #10b981;
+  --color-chart-3: #f59e0b;
+  --color-chart-4: #f43f5e;
+  --color-chart-5: #8b5cf6;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+
+  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 4px 12px -2px rgb(0 0 0 / 0.06);
+  --shadow-card-hover: 0 2px 4px 0 rgb(0 0 0 / 0.05), 0 12px 24px -6px rgb(0 0 0 / 0.14);
+  --shadow-glow: 0 0 0 1px rgb(79 70 229 / 0.12), 0 8px 24px -6px rgb(79 70 229 / 0.35);
+  --shadow-soft: 0 4px 16px -4px rgb(0 0 0 / 0.08);
+
+  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-fade-up: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-scale-in: scale-in 0.2s ease-out;
+  --animate-slide-in-left: slide-in-left 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-slide-in-right: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-slide-in-up: slide-in-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-pulse-soft: pulse-soft 2.4s ease-in-out infinite;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes slide-in-left {
+    from { transform: translateX(-100%); }
+    to { transform: none; }
+  }
+  @keyframes slide-in-right {
+    from { transform: translateX(100%); }
+    to { transform: none; }
+  }
+  @keyframes slide-in-up {
+    from { transform: translateY(100%); }
+    to { transform: none; }
+  }
+  @keyframes shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
 }
 
 @layer base {
   * {
     @apply border-border;
   }
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     -webkit-tap-highlight-color: transparent;
+  }
+  ::selection {
+    @apply bg-primary/15 text-foreground;
   }
 }
 
@@ -37,5 +119,89 @@
   }
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, rgb(0 0 0 / 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(0 0 0 / 0.04) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+  .dark .bg-grid {
+    background-image:
+      linear-gradient(to right, rgb(255 255 255 / 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+  }
+  .bg-dots {
+    background-image: radial-gradient(rgb(0 0 0 / 0.06) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  .dark .bg-dots {
+    background-image: radial-gradient(rgb(255 255 255 / 0.08) 1px, transparent 1px);
+  }
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-400;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Dark mode token overrides (class-based via `.dark`) */
+.dark {
+  --color-background: #0c0a09;
+  --color-foreground: #fafafa;
+  --color-card: #18181b;
+  --color-card-foreground: #fafafa;
+  --color-popover: #18181b;
+  --color-popover-foreground: #fafafa;
+  --color-muted: #27272a;
+  --color-muted-foreground: #a1a1aa;
+  --color-border: #27272a;
+  --color-input: #3f3f46;
+  --color-primary: #818cf8;
+  --color-primary-foreground: #0c0a09;
+  --color-secondary: #2e2b52;
+  --color-secondary-foreground: #c7d2fe;
+  --color-accent: #27272a;
+  --color-accent-foreground: #fafafa;
+  --color-ring: #818cf8;
+}
+
+/* Refined scrollbar */
+@media (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(0 0 0 / 0.16);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(0 0 0 / 0.28);
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgb(255 255 255 / 0.16);
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: rgb(255 255 255 / 0.28);
+    border: 2px solid transparent;
+    background-clip: content-box;
   }
 }

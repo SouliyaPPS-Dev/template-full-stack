@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, healthCheck, testAllEndpoints } from "../services/api";
+import { api, healthCheck, testAllEndpoints, updateProfile as updateProfileService } from "../services/api";
 import { Product, Category, Order, Setting, User } from "../types";
 
 export function useHealthCheck() {
@@ -52,18 +52,18 @@ export function useProfile() {
   return useQuery({
     queryKey: ["profile"],
     queryFn: () => api<User>("/auth/me"),
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    staleTime: 0,
   });
 }
 
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { full_name?: string; phone?: string }) =>
-      api<User>("/auth/me", {
-        method: "PUT",
-        body: JSON.stringify(data),
-      }),
-    onSuccess: () => {
+    mutationFn: updateProfileService,
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["profile"], updated);
       queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });

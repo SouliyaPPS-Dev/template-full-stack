@@ -56,6 +56,13 @@ func Load() *Config {
 		}
 	}
 
+	jwtExpiry := 10 * 365 * 24 * time.Hour
+	if v := os.Getenv("JWT_EXPIRY_HOURS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			jwtExpiry = time.Duration(n) * time.Hour
+		}
+	}
+
 	return &Config{
 		Port:            port,
 		DatabaseURL:     dbURL,
@@ -65,6 +72,6 @@ func Load() *Config {
 		MaxIdleConns:    maxIdle,
 		ConnMaxLifetime: 5 * time.Minute,
 		BodyMaxBytes:    1 << 20, // 1MB
-		JWTExpiry:       30 * 24 * time.Hour,
+		JWTExpiry:       jwtExpiry,
 	}
 }

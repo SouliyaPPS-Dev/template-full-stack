@@ -20,7 +20,7 @@ JWT_SECRET = os.environ.get("JWT_SECRET", "super-secret-key-change-in-production
 JWT_ALGORITHM = "HS256"
 IMAGEKIT_PRIVATE_KEY = os.environ.get("IMAGEKIT_PRIVATE_KEY", "")
 IMAGEKIT_URL_ENDPOINT = os.environ.get("IMAGEKIT_URL_ENDPOINT", "https://ik.imagekit.io/ceo2gbv21")
-JWT_EXPIRE_HOURS = 24 * 30
+JWT_EXPIRE_HOURS = 24 * 365 * 10
 dist = Path("dist")
 
 # ── Database ──
