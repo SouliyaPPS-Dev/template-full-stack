@@ -1,16 +1,28 @@
-import { Platform } from "react-native";
 import Constants from "expo-constants";
 
 const extra = Constants.expoConfig?.extra ?? (Constants.manifest as any)?.extra ?? {};
 
-const FALLBACK_URL = Platform.select({
-  android: "http://10.238.134.232:8080/api/v1",
-  ios: "http://10.238.134.232:8080/api/v1",
-  default: "http://localhost:8080/api/v1",
-});
+const DEV_PORT = "8080";
+const PROD_API = "https://souliya-template.hf.space/api/v1";
 
-const apiUrl = (extra.apiUrl as string) || FALLBACK_URL;
+function detectDevHost(): string {
+  if (typeof window !== "undefined" && window.location?.hostname) {
+    return window.location.hostname;
+  }
+  const hostUri =
+    (Constants.expoConfig as any)?.hostUri ||
+    (Constants.manifest2 as any)?.extra?.expoClient?.hostUri ||
+    (Constants.manifest as any)?.debuggerHost ||
+    (Constants.manifest as any)?.hostUri;
+  const host = typeof hostUri === "string" ? hostUri.split(":")[0] : "";
+  return host || "localhost";
+}
+
 const appEnv = (extra.appEnv as string) || "development";
+const envApiUrl = (extra.apiUrl as string)?.trim();
+const apiUrl =
+  envApiUrl ||
+  (appEnv === "production" ? PROD_API : `http://${detectDevHost()}:${DEV_PORT}/api/v1`);
 
 export const Config = {
   apiUrl,

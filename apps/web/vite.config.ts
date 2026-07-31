@@ -32,7 +32,18 @@ export default defineConfig(({ mode }) => {
         srcDir: "src",
         filename: "sw.ts",
         registerType: "autoUpdate",
-        includeAssets: ["icon.svg"],
+        devOptions: {
+          enabled: true,
+          type: "module",
+          navigateFallback: "index.html",
+        },
+        includeAssets: [
+          "icon.svg",
+          "pwa-192x192.png",
+          "pwa-512x512.png",
+          "pwa-maskable-512x512.png",
+          "apple-touch-icon.png",
+        ],
         manifest: {
           name: "Template - E-commerce Platform",
           short_name: "Template",
@@ -40,14 +51,32 @@ export default defineConfig(({ mode }) => {
           theme_color: "#171717",
           background_color: "#ffffff",
           display: "standalone",
+          display_override: ["standalone", "minimal-ui"],
+          orientation: "portrait",
           scope: base,
           start_url: base,
           icons: [
             {
+              src: `${base}pwa-192x192.png`,
+              sizes: "192x192",
+              type: "image/png",
+            },
+            {
+              src: `${base}pwa-512x512.png`,
+              sizes: "512x512",
+              type: "image/png",
+            },
+            {
+              src: `${base}pwa-maskable-512x512.png`,
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "maskable",
+            },
+            {
               src: `${base}icon.svg`,
               sizes: "any",
               type: "image/svg+xml",
-              purpose: "any maskable",
+              purpose: "any",
             },
           ],
         },

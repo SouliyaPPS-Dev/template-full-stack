@@ -10,6 +10,8 @@ import {
   useNavigationContainerRef,
 } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { Feather } from "@expo/vector-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   login as apiLogin,
@@ -30,6 +32,7 @@ import OrdersScreen from "./screens/OrdersScreen";
 import { Colors } from "./theme";
 
 const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
 const queryClient = new QueryClient();
 
 if (typeof console !== "undefined") {
@@ -49,12 +52,101 @@ if (typeof console !== "undefined") {
 
 type RootParamList = {
   Login: undefined;
+  Main: undefined;
+};
+
+type TabParamList = {
   Home: undefined;
   Products: undefined;
-  Profile: undefined;
   Cart: undefined;
   Orders: undefined;
+  Account: undefined;
 };
+
+function tabIcon(name: keyof typeof Feather.glyphMap) {
+  return ({ color, size }: { color: string; size: number }) => (
+    <Feather name={name} size={size} color={color} />
+  );
+}
+
+function MainTabs({
+  user,
+  onLogout,
+  onUserUpdate,
+}: {
+  user: User | null;
+  onLogout: () => void;
+  onUserUpdate: (user: User) => void;
+}) {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: Colors.primary },
+        headerTintColor: Colors.white,
+        headerTitleStyle: { fontWeight: "700" },
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.textMuted,
+        tabBarStyle: {
+          backgroundColor: Colors.surface,
+          borderTopColor: Colors.borderLight,
+          borderTopWidth: 1,
+          height: 60,
+          paddingTop: 6,
+          paddingBottom: 8,
+        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+      }}
+    >
+      <Tab.Screen
+        name="Home"
+        options={{
+          title: "Template",
+          tabBarLabel: "Home",
+          tabBarIcon: tabIcon("home"),
+        }}
+      >
+        {() => <HomeScreen user={user} onLogout={onLogout} />}
+      </Tab.Screen>
+      <Tab.Screen
+        name="Products"
+        component={ProductsScreen}
+        options={{
+          title: "Products",
+          tabBarIcon: tabIcon("shopping-bag"),
+        }}
+      />
+      <Tab.Screen
+        name="Cart"
+        component={CartScreen}
+        options={{
+          title: "Cart",
+          tabBarIcon: tabIcon("shopping-cart"),
+        }}
+      />
+      <Tab.Screen
+        name="Orders"
+        component={OrdersScreen}
+        options={{
+          title: "My Orders",
+          tabBarLabel: "Orders",
+          tabBarIcon: tabIcon("package"),
+        }}
+      />
+      <Tab.Screen
+        name="Account"
+        options={{
+          title: "My Profile",
+          tabBarLabel: "Account",
+          tabBarIcon: tabIcon("user"),
+        }}
+      >
+        {() => (
+          <ProfileScreen user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />
+        )}
+      </Tab.Screen>
+    </Tab.Navigator>
+  );
+}
 
 function RootNavigator() {
   const [user, setUser] = useState<User | null>(null);
@@ -148,13 +240,10 @@ function RootNavigator() {
   return (
     <NavigationContainer ref={navRef}>
       <Stack.Navigator
-        initialRouteName={user ? "Home" : "Login"}
-        screenOptions={{
-          headerStyle: { backgroundColor: Colors.primary },
-          headerTintColor: Colors.white,
-        }}
+        initialRouteName={user ? "Main" : "Login"}
+        screenOptions={{ headerShown: false }}
       >
-        <Stack.Screen name="Login" options={{ headerShown: false }}>
+        <Stack.Screen name="Login">
           {() => (
             <LoginScreen
               onLogin={login}
@@ -162,31 +251,11 @@ function RootNavigator() {
             />
           )}
         </Stack.Screen>
-        <Stack.Screen name="Home" options={{ title: "Template" }}>
+        <Stack.Screen name="Main">
           {() => (
-            <HomeScreen user={user} onLogout={logout} />
+            <MainTabs user={user} onLogout={logout} onUserUpdate={handleUserUpdate} />
           )}
         </Stack.Screen>
-        <Stack.Screen
-          name="Products"
-          component={ProductsScreen}
-          options={{ title: "Products" }}
-        />
-        <Stack.Screen name="Profile" options={{ title: "My Profile" }}>
-          {() => (
-            <ProfileScreen user={user} onLogout={logout} onUserUpdate={handleUserUpdate} />
-          )}
-        </Stack.Screen>
-        <Stack.Screen
-          name="Cart"
-          component={CartScreen}
-          options={{ title: "Cart" }}
-        />
-        <Stack.Screen
-          name="Orders"
-          component={OrdersScreen}
-          options={{ title: "My Orders" }}
-        />
       </Stack.Navigator>
     </NavigationContainer>
   );

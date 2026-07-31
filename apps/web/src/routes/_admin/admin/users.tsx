@@ -6,9 +6,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Users, Pencil, Trash2, X, Eye, EyeOff, Upload } from "lucide-react";
+import { Badge, statusBadgeVariant } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog } from "@/components/ui/dialog";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Plus, Users, Pencil, Trash2, Eye, EyeOff, Upload } from "lucide-react";
 import { api } from "@/services/api";
 import { useImageUpload } from "@/hooks/use-image-upload";
+import { initials, formatDate } from "@/lib/format";
 
 interface User {
   id: string;
@@ -33,12 +38,12 @@ interface UserForm {
 
 const emptyForm: UserForm = { email: "", password: "", full_name: "", phone: "", role: "user", avatar_url: "" };
 
-function roleColor(role: string) {
+function roleBadgeVariant(role: string) {
   switch (role) {
-    case "superadmin": return "bg-purple-100 text-purple-700";
-    case "admin": return "bg-red-100 text-red-700";
-    case "staff": return "bg-blue-100 text-blue-700";
-    default: return "bg-gray-100 text-gray-700";
+    case "superadmin": return "destructive" as const;
+    case "admin": return "default" as const;
+    case "staff": return "secondary" as const;
+    default: return "outline" as const;
   }
 }
 
@@ -163,9 +168,12 @@ function AdminUsers() {
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4 md:mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Users</h1>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-display font-bold tracking-tight">Users</h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage user accounts and roles.</p>
+        </div>
         <Button onClick={openCreate}>
           <Plus className="h-4 w-4 mr-2" />
           <span className="hidden sm:inline">Add User</span>
@@ -173,198 +181,192 @@ function AdminUsers() {
         </Button>
       </div>
 
-      <Card>
+      <Card className="shadow-card">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="text-left p-3 font-medium">User</th>
-                  <th className="text-left p-3 font-medium hidden sm:table-cell">Phone</th>
-                  <th className="text-center p-3 font-medium">Role</th>
-                  <th className="text-center p-3 font-medium">Status</th>
-                  <th className="text-left p-3 font-medium hidden md:table-cell">Joined</th>
-                  <th className="text-center p-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={6} className="p-8 text-center text-muted-foreground">Loading...</td>
+          {isLoading ? (
+            <div className="space-y-2 p-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-9 w-9 rounded-full" />
+                  <Skeleton className="h-4 w-36" />
+                  <Skeleton className="h-5 w-16 rounded-full ml-auto" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">User</th>
+                    <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground hidden sm:table-cell">Phone</th>
+                    <th className="text-center p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Role</th>
+                    <th className="text-center p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                    <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Joined</th>
+                    <th className="text-center p-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
                   </tr>
-                ) : users && users.length > 0 ? (
-                  users.map((user) => (
-                    <tr key={user.id} className="border-b last:border-0 hover:bg-muted/30">
-                      <td className="p-3">
-                        <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-medium overflow-hidden">
-                            {user.avatar_url ? (
-                              <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
-                            ) : (
-                              user.full_name.charAt(0).toUpperCase()
-                            )}
+                </thead>
+                <tbody>
+                  {users && users.length > 0 ? (
+                    users.map((user) => (
+                      <tr key={user.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                        <td className="p-3">
+                          <div className="flex items-center gap-3">
+                            <Avatar size="sm">
+                              <AvatarImage src={user.avatar_url} />
+                              {!user.avatar_url && <AvatarFallback>{initials(user.full_name)}</AvatarFallback>}
+                            </Avatar>
+                            <div className="min-w-0">
+                              <p className="font-medium truncate">{user.full_name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <p className="font-medium truncate">{user.full_name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                        </td>
+                        <td className="p-3 text-muted-foreground hidden sm:table-cell">{user.phone || "—"}</td>
+                        <td className="p-3 text-center">
+                          <Badge variant={roleBadgeVariant(user.role)} className="capitalize">
+                            {user.role}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-center">
+                          <Badge variant={statusBadgeVariant(user.is_active ? "active" : "inactive")}>
+                            {user.is_active ? "Active" : "Inactive"}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-muted-foreground hidden md:table-cell">{formatDate(user.created_at)}</td>
+                        <td className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(user)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(user)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
-                        </div>
-                      </td>
-                      <td className="p-3 text-muted-foreground hidden sm:table-cell">{user.phone || "-"}</td>
-                      <td className="p-3 text-center">
-                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${roleColor(user.role)}`}>
-                          {user.role}
-                        </span>
-                      </td>
-                      <td className="p-3 text-center">
-                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${user.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                          {user.is_active ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="p-3 text-muted-foreground hidden md:table-cell">
-                        {new Date(user.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="p-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(user)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(user)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="p-10 text-center">
+                        <Users className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                        <p className="mt-2 text-sm text-muted-foreground">No users yet.</p>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                      <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      No users yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={closeForm}>
-          <div className="bg-background rounded-xl shadow-lg w-full max-w-md mx-4 p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">{editingUser ? "Edit User" : "Add User"}</h2>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={closeForm}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="full_name">Full Name</Label>
-                <Input
-                  id="full_name"
-                  value={form.full_name}
-                  onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  disabled={!!editingUser}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Avatar</Label>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                    {form.avatar_url ? (
-                      <img src={form.avatar_url} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <Users className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </div>
-                  <Button type="button" variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()} disabled={imageUploading}>
-                    <Upload className="h-4 w-4 mr-2" />
-                    {imageUploading ? "Uploading..." : "Upload"}
-                  </Button>
-                  <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const url = await uploadImage(file);
-                    if (url) setForm({ ...form, avatar_url: url });
-                    if (avatarInputRef.current) avatarInputRef.current.value = "";
-                  }} />
-                </div>
-              </div>
-
-              {!editingUser && (
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      value={form.password}
-                      onChange={(e) => setForm({ ...form, password: e.target.value })}
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <select
-                  id="role"
-                  value={form.role}
-                  onChange={(e) => setForm({ ...form, role: e.target.value })}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:text-sm"
-                >
-                  <option value="user">User</option>
-                  <option value="staff">Staff</option>
-                  <option value="admin">Admin</option>
-                  <option value="superadmin">Superadmin</option>
-                </select>
-              </div>
-
-              {error && <p className="text-sm text-destructive">{error}</p>}
-
-              <div className="flex gap-2 justify-end">
-                <Button type="button" variant="outline" onClick={closeForm}>Cancel</Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Saving..." : editingUser ? "Update" : "Create"}
-                </Button>
-              </div>
-            </form>
+      <Dialog
+        open={showForm}
+        onClose={closeForm}
+        title={editingUser ? "Edit User" : "Add User"}
+        description={editingUser ? "Update the user's profile below." : "Create a new user account."}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="full_name">Full Name</Label>
+            <Input
+              id="full_name"
+              value={form.full_name}
+              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+              required
+            />
           </div>
-        </div>
-      )}
+
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              disabled={!!editingUser}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phone">Phone</Label>
+            <Input
+              id="phone"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Avatar</Label>
+            <div className="flex items-center gap-3">
+              <Avatar size="md">
+                <AvatarImage src={form.avatar_url} />
+                {!form.avatar_url && <AvatarFallback>{initials(form.full_name || "?")}</AvatarFallback>}
+              </Avatar>
+              <Button type="button" variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()} disabled={imageUploading}>
+                <Upload className="h-4 w-4 mr-2" />
+                {imageUploading ? "Uploading..." : "Upload"}
+              </Button>
+              <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const url = await uploadImage(file);
+                if (url) setForm({ ...form, avatar_url: url });
+                if (avatarInputRef.current) avatarInputRef.current.value = "";
+              }} />
+            </div>
+          </div>
+
+          {!editingUser && (
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="role">Role</Label>
+            <select
+              id="role"
+              value={form.role}
+              onChange={(e) => setForm({ ...form, role: e.target.value })}
+              className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/25 focus-visible:border-ring"
+            >
+              <option value="user">User</option>
+              <option value="staff">Staff</option>
+              <option value="admin">Admin</option>
+              <option value="superadmin">Superadmin</option>
+            </select>
+          </div>
+
+          {error && <p className="text-sm text-destructive">{error}</p>}
+
+          <div className="flex gap-2 justify-end pt-2">
+            <Button type="button" variant="outline" onClick={closeForm}>Cancel</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : editingUser ? "Update" : "Create"}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
     </div>
   );
 }

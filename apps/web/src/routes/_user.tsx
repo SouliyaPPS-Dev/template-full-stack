@@ -100,7 +100,7 @@ function UserLayout() {
             ))}
             <div className="mx-1 h-5 w-px bg-border" />
             <ThemeToggle />
-            <InstallButton className="hidden lg:inline-flex" />
+            <InstallButton />
           </nav>
 
           {/* Desktop auth */}
@@ -217,7 +217,7 @@ function UserLayout() {
             </>
           )}
           <div className="mt-4">
-            <InstallButton className="w-full justify-start" />
+            <InstallButton className="w-full" />
           </div>
         </nav>
       </Sheet>

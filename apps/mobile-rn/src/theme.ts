@@ -1,21 +1,26 @@
 import { Platform, TextStyle, ViewStyle } from "react-native";
 
 export const Colors = {
-  primary: "#2563eb",
+  primary: "#4f46e5",
+  primaryDark: "#4338ca",
   primaryLight: "#e0e7ff",
-  primaryBg: "#f0f4ff",
+  primaryBg: "#eef2ff",
+  violet: "#8b5cf6",
   white: "#fff",
-  background: "#fff",
-  cardBg: "#fafafa",
-  text: "#000",
-  textSecondary: "#666",
-  textMuted: "#999",
-  border: "#ddd",
-  borderLight: "#eee",
+  background: "#fafafc",
+  surface: "#ffffff",
+  cardBg: "#f7f7fa",
+  text: "#0f172a",
+  textSecondary: "#64748b",
+  textMuted: "#94a3b8",
+  border: "#e2e8f0",
+  borderLight: "#eef2f7",
   error: "#dc2626",
+  warning: "#d97706",
   success: "#16a34a",
-  disabled: "#ccc",
-  placeholder: "#999",
+  disabled: "#cbd5e1",
+  placeholder: "#94a3b8",
+  overlay: "rgba(15, 23, 42, 0.5)",
 };
 
 export const Spacing = {
@@ -29,9 +34,12 @@ export const Spacing = {
 };
 
 export const BorderRadius = {
+  xs: 6,
   sm: 8,
-  md: 10,
-  lg: 12,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  full: 999,
 };
 
 export const FontSize = {
@@ -79,38 +87,63 @@ export const Typography: Record<string, TextStyle> = {
 
 export const CardShadow: ViewStyle = Platform.select({
   ios: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowRadius: 12,
   },
   android: {
-    elevation: 3,
+    elevation: 4,
   },
   default: {
-    elevation: 3,
+    elevation: 4,
+  },
+}) as ViewStyle;
+
+export const CardShadowSoft: ViewStyle = Platform.select({
+  ios: {
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+  },
+  android: {
+    elevation: 2,
+  },
+  default: {
+    elevation: 2,
   },
 }) as ViewStyle;
 
 export const ButtonPrimary: ViewStyle = {
   backgroundColor: Colors.primary,
   paddingVertical: 14,
-  borderRadius: BorderRadius.sm,
+  paddingHorizontal: Spacing.xl,
+  borderRadius: BorderRadius.md,
   alignItems: "center",
+  justifyContent: "center",
+  shadowColor: "#4f46e5",
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.25,
+  shadowRadius: 8,
+  elevation: 4,
 };
 
 export const ButtonOutline: ViewStyle = {
   borderWidth: 1,
   borderColor: Colors.primary,
   paddingVertical: 14,
-  borderRadius: BorderRadius.sm,
+  paddingHorizontal: Spacing.xl,
+  borderRadius: BorderRadius.md,
   alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: Colors.white,
 };
 
 export const ButtonDanger: ViewStyle = {
   marginHorizontal: Spacing.xl,
   paddingVertical: 14,
-  borderRadius: BorderRadius.sm,
+  borderRadius: BorderRadius.md,
   borderWidth: 1,
   borderColor: Colors.error,
   alignItems: "center",
@@ -119,7 +152,7 @@ export const ButtonDanger: ViewStyle = {
 export const Input: TextStyle = {
   borderWidth: 1,
   borderColor: Colors.border,
-  borderRadius: BorderRadius.sm,
+  borderRadius: BorderRadius.md,
   padding: 14,
   fontSize: FontSize.lg,
   marginBottom: Spacing.md,
@@ -129,7 +162,9 @@ export const Input: TextStyle = {
 export const Card: ViewStyle = {
   marginHorizontal: Spacing.lg,
   marginBottom: Spacing.lg,
-  backgroundColor: Colors.cardBg,
+  backgroundColor: Colors.surface,
   borderRadius: BorderRadius.lg,
   padding: Spacing.lg,
+  borderWidth: 1,
+  borderColor: Colors.borderLight,
 };

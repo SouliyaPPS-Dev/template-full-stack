@@ -41,10 +41,17 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS products (
             id TEXT PRIMARY KEY, name TEXT NOT NULL, slug TEXT UNIQUE NOT NULL,
-            sku TEXT DEFAULT '', category_id TEXT DEFAULT '', selling_price REAL DEFAULT 0,
-            cost_price REAL DEFAULT 0, stock INTEGER DEFAULT 0, images TEXT DEFAULT '[]',
+            sku TEXT DEFAULT '', category_id TEXT DEFAULT '', description TEXT DEFAULT '',
+            selling_price REAL DEFAULT 0, cost_price REAL DEFAULT 0, compare_price REAL DEFAULT 0,
+            stock INTEGER DEFAULT 0, images TEXT DEFAULT '[]', is_featured INTEGER DEFAULT 0,
             is_active INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')),
             updated_at TEXT DEFAULT (datetime('now')), deleted_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS categories (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, slug TEXT UNIQUE NOT NULL,
+            description TEXT DEFAULT '', image_url TEXT DEFAULT '', sort_order INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 1, created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
         );
         CREATE TABLE IF NOT EXISTS orders (
             id TEXT PRIMARY KEY, order_number TEXT UNIQUE NOT NULL,
@@ -52,7 +59,48 @@ def init_db():
             payment_status TEXT DEFAULT 'unpaid', grand_total REAL DEFAULT 0,
             created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now'))
         );
+        CREATE TABLE IF NOT EXISTS system_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, setting_key TEXT UNIQUE NOT NULL,
+            setting_value TEXT DEFAULT '', description TEXT DEFAULT '',
+            created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now'))
+        );
     """)
+    try: conn.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT ''")
+    except: pass
+    try: conn.execute("ALTER TABLE products ADD COLUMN description TEXT DEFAULT ''")
+    except: pass
+    try: conn.execute("ALTER TABLE products ADD COLUMN compare_price REAL DEFAULT 0")
+    except: pass
+    try: conn.execute("ALTER TABLE products ADD COLUMN is_featured INTEGER DEFAULT 0")
+    except: pass
+    try: conn.execute("ALTER TABLE categories ADD COLUMN image_url TEXT DEFAULT ''")
+    except: pass
+
+    if conn.execute("SELECT COUNT(*) FROM system_settings").fetchone()[0] == 0:
+        conn.executemany(
+            "INSERT OR IGNORE INTO system_settings (setting_key, setting_value, description) VALUES (?,?,?)",
+            [("store_name", "My Store", "Store display name"),
+             ("store_phone", "+856 20 00 000 000", "Store contact phone"),
+             ("currency", "LAK", "Default currency"),
+             ("tax_percent", "7", "Default tax rate"),
+             ("store_logo", "", "Store logo URL")])
+
+    if conn.execute("SELECT COUNT(*) FROM categories").fetchone()[0] == 0:
+        conn.executemany(
+            "INSERT OR IGNORE INTO categories (id,name,slug,description,sort_order,is_active) VALUES (?,?,?,?,?,1)",
+            [("059d9d35-0230-44a2-b171-bfa66c41b917", "Electronics", "electronics", "Phones, tablets, and accessories", 1),
+             ("7ca35ac8-fc4a-4078-8c75-5e00031b1512", "Clothing", "clothing", "Men and women fashion", 2),
+             ("5c5f2981-25d3-414a-9cfe-6625d5560646", "Home & Garden", "home-garden", "Furniture and home decor", 3),
+             ("bcc138c6-1b22-4cb2-9b41-08f688b2cb23", "Sports", "sports", "Sports equipment and gear", 4),
+             ("5295dd27-badf-417b-a492-f9891fc0af04", "Books", "books", "Physical and digital books", 5)])
+
+    if conn.execute("SELECT COUNT(*) FROM products").fetchone()[0] == 0:
+        conn.executemany(
+            """INSERT OR IGNORE INTO products
+               (id,name,slug,sku,category_id,description,cost_price,selling_price,compare_price,stock,images,is_featured,is_active)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1)""",
+            _SEED_PRODUCTS)
+
     if conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
         conn.execute("INSERT INTO users (id,email,password_hash,full_name,role,is_active) VALUES (?,?,?,?,?,?)",
             (str(uuid.uuid4()), "admin@template.com",
@@ -66,9 +114,25 @@ def init_db():
                 "INSERT INTO orders (id,order_number,user_id,status,payment_status,grand_total) VALUES (?,?,?,?,?,?)",
                 (str(uuid.uuid4()), f"ORD-{int(time.time()*1000)}-{i}", uid,
                  statuses[i % len(statuses)], "paid" if i % 2 == 0 else "unpaid", round(50 + i * 30.5, 2)))
-    try: conn.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT ''")
-    except: pass
     conn.commit(); conn.close()
+
+_SEED_PRODUCTS = [
+    ("47ee8455-fb24-4923-87d7-a7e2cd955367", "Test Product", "test-product", "TP001", "", "Demo product", 50.00, 99.99, 0, 100, "[]", 0),
+    ("33677a32-33ce-459e-817f-e4f9ec42821b", "iPhone 15 Pro Max", "iphone-15-pro-max", "IPH15PM", "059d9d35-0230-44a2-b171-bfa66c41b917", "Latest Apple smartphone with A17 Pro chip", 999.00, 1299.99, 0, 25, "[]", 1),
+    ("ec02f33d-5ed9-42d4-8dc5-36a1dd8d114b", "Samsung Galaxy S24", "samsung-galaxy-s24", "SGS24", "059d9d35-0230-44a2-b171-bfa66c41b917", "Samsung flagship with AI features", 699.00, 899.99, 0, 30, "[]", 1),
+    ("bf9cf888-cc33-4125-b855-a8184ce870f8", "MacBook Air M3", "macbook-air-m3", "MBA3", "059d9d35-0230-44a2-b171-bfa66c41b917", "Ultra-thin laptop with M3 chip", 899.00, 1099.99, 0, 15, "[]", 1),
+    ("a0d2e3ef-9c30-435f-bf94-77c1d1248522", "AirPods Pro 2", "airpods-pro-2", "APP2", "059d9d35-0230-44a2-b171-bfa66c41b917", "Active noise cancelling earbuds", 179.99, 249.99, 0, 50, "[]", 0),
+    ("b71f79af-c617-4dc5-be2a-6d2cfd8ea300", "USB-C Hub 7-in-1", "usb-c-hub-7in1", "USB7", "059d9d35-0230-44a2-b171-bfa66c41b917", "Multiport adapter for MacBook", 19.99, 39.99, 0, 100, "[]", 0),
+    ("c78a62db-ef42-40c9-8449-c70ad101a249", "Classic Cotton T-Shirt", "classic-cotton-tshirt", "CCT01", "7ca35ac8-fc4a-4078-8c75-5e00031b1512", "100% cotton casual t-shirt", 10.00, 24.99, 0, 200, "[]", 0),
+    ("7e9f5e51-87bc-42e6-9184-ce1794444a7d", "Denim Jacket", "denim-jacket", "DJ01", "7ca35ac8-fc4a-4078-8c75-5e00031b1512", "Vintage style denim jacket", 40.00, 79.99, 0, 50, "[]", 1),
+    ("ef8849cb-dc14-4374-a35d-907f94e942c3", "Running Shoes Pro", "running-shoes-pro", "RSP01", "7ca35ac8-fc4a-4078-8c75-5e00031b1512", "Lightweight running shoes", 65.00, 129.99, 0, 75, "[]", 0),
+    ("c5ed3df7-6b41-422d-b9f5-33548891cfcd", "Ergonomic Office Chair", "ergonomic-office-chair", "EOC01", "5c5f2981-25d3-414a-9cfe-6625d5560646", "Adjustable lumbar support chair", 180.00, 349.99, 0, 20, "[]", 1),
+    ("ffac1073-feae-45c7-b526-ac0bff9e8eb1", "LED Desk Lamp", "led-desk-lamp", "LDL01", "5c5f2981-25d3-414a-9cfe-6625d5560646", "Dimmable LED desk lamp with USB port", 25.00, 49.99, 0, 60, "[]", 0),
+    ("1aed088a-062b-4ae3-a909-4cd39c193f72", "Yoga Mat Premium", "yoga-mat-premium", "YMP01", "bcc138c6-1b22-4cb2-9b41-08f688b2cb23", "Non-slip exercise yoga mat", 15.00, 39.99, 0, 80, "[]", 0),
+    ("68ed210a-d924-4c25-9059-025f1aa1efff", "Adjustable Dumbbells", "adjustable-dumbbells", "AD01", "bcc138c6-1b22-4cb2-9b41-08f688b2cb23", "5-25 lb adjustable dumbbell set", 100.00, 199.99, 0, 30, "[]", 1),
+    ("c73518d7-8317-45d6-9fc5-14b3ae1da938", "The Art of Code", "the-art-of-code", "TAOC", "5295dd27-badf-417b-a492-f9891fc0af04", "Modern software engineering patterns", 10.00, 29.99, 0, 100, "[]", 0),
+    ("11e47c7c-11ee-4bbe-bf81-45a94e02ec36", "Business Strategy 101", "business-strategy-101", "BS101", "5295dd27-badf-417b-a492-f9891fc0af04", "Essential business strategy guide", 12.00, 34.99, 0, 60, "[]", 0),
+]
 
 # ── Token helpers ──
 def hash_password(password: str) -> str:
@@ -431,7 +495,11 @@ if __name__ == "__main__":
         return resp.json()
 
     @app.get("/api/v1/categories")
-    def api_categories(): return []
+    def api_categories():
+        conn = get_db()
+        rows = conn.execute("SELECT * FROM categories WHERE is_active=1 ORDER BY sort_order, name").fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
 
     @app.get("/api/v1/orders")
     def api_orders(request: Request):
@@ -517,13 +585,18 @@ if __name__ == "__main__":
 
     @app.get("/api/v1/settings")
     def api_settings():
-        return [
-            {"key": "store_name", "value": "Template"},
-            {"key": "store_phone", "value": ""},
-            {"key": "currency", "value": "LAK"},
-            {"key": "tax_percent", "value": "7"},
-            {"key": "store_logo", "value": ""},
-        ]
+        conn = get_db()
+        rows = conn.execute("SELECT setting_key, setting_value, description FROM system_settings ORDER BY id").fetchall()
+        conn.close()
+        if not rows:
+            return [
+                {"key": "store_name", "value": "Template"},
+                {"key": "store_phone", "value": ""},
+                {"key": "currency", "value": "LAK"},
+                {"key": "tax_percent", "value": "7"},
+                {"key": "store_logo", "value": ""},
+            ]
+        return [{"key": r["setting_key"], "value": r["setting_value"], "description": r["description"]} for r in rows]
 
     # ── Serve SPA assets via middleware ──
     _MIME = {

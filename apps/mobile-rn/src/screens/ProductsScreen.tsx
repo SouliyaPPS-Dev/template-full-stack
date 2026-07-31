@@ -11,13 +11,7 @@ import {
 import { useProducts } from "../hooks/useQueries";
 import { useResponsive } from "../hooks/useResponsive";
 import ProductCard from "../components/ProductCard";
-import { Product } from "../types";
-import {
-  Colors,
-  Spacing,
-  BorderRadius,
-  FontSize,
-} from "../theme";
+import { Colors, Spacing, BorderRadius, FontSize } from "../theme";
 
 export default function ProductsScreen() {
   const { data: products, isLoading, error } = useProducts();
@@ -30,6 +24,9 @@ export default function ProductsScreen() {
       p.sku?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const horizontalPadding = isDesktop ? 40 : isTablet ? 24 : Spacing.lg;
+  const gridColumns = isDesktop ? columns : isTablet ? 2 : 1;
+
   if (isLoading) {
     return (
       <View style={styles.center}>
@@ -41,18 +38,22 @@ export default function ProductsScreen() {
   if (error) {
     return (
       <View style={styles.center}>
+        <View style={styles.errorIcon}>
+          <Text style={styles.errorIconText}>!</Text>
+        </View>
         <Text style={styles.errorText}>Failed to load products</Text>
+        <Text style={styles.errorHint}>Check your connection and try again.</Text>
       </View>
     );
   }
-
-  const horizontalPadding = isDesktop ? 40 : isTablet ? 24 : Spacing.lg;
 
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingHorizontal: horizontalPadding }]}>
         <Text style={styles.title}>Products</Text>
-        <Text style={styles.count}>{filtered?.length ?? 0} items</Text>
+        <View style={styles.countBadge}>
+          <Text style={styles.count}>{filtered?.length ?? 0} items</Text>
+        </View>
       </View>
 
       <View style={[styles.searchContainer, { paddingHorizontal: horizontalPadding }]}>
@@ -69,14 +70,19 @@ export default function ProductsScreen() {
         data={filtered}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.list, { paddingHorizontal: horizontalPadding }]}
-        numColumns={isDesktop ? columns : 1}
-        key={isDesktop ? `desktop-${columns}` : "mobile"}
-        columnWrapperStyle={isDesktop ? styles.row : undefined}
+        numColumns={gridColumns}
+        key={`grid-${gridColumns}`}
+        columnWrapperStyle={gridColumns > 1 ? styles.row : undefined}
         renderItem={({ item }) => (
           <ProductCard product={item} />
         )}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>No products yet</Text>
+          <View style={styles.empty}>
+            <Text style={styles.emptyEmoji}>🛍️</Text>
+            <Text style={styles.emptyText}>
+              {search ? `No products match "${search}"` : "No products yet"}
+            </Text>
+          </View>
         }
       />
     </View>
@@ -95,26 +101,47 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.borderLight,
   },
   title: {
-    fontSize: 22,
+    fontSize: FontSize.title,
     fontWeight: Platform.OS === "android" ? "700" : "bold",
+    color: Colors.text,
   },
-  count: { fontSize: 14, color: Colors.textMuted },
+  countBadge: {
+    backgroundColor: Colors.primaryBg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+  },
+  count: { fontSize: 13, color: Colors.primary, fontWeight: "600" },
   searchContainer: {
     paddingVertical: Spacing.md,
   },
   searchInput: {
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.md,
     padding: 12,
     fontSize: FontSize.md,
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.surface,
+    color: Colors.text,
   },
-  list: { paddingVertical: Spacing.md },
+  list: { paddingVertical: Spacing.md, paddingBottom: 40 },
   row: {
     justifyContent: "flex-start",
     gap: 12,
   },
-  errorText: { color: Colors.error, fontSize: 16 },
-  emptyText: { color: Colors.textMuted, textAlign: "center", marginTop: 40, fontSize: 16 },
+  errorIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.error,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  errorIconText: { color: Colors.white, fontSize: 28, fontWeight: "700" },
+  errorText: { color: Colors.error, fontSize: FontSize.lg, fontWeight: "600" },
+  errorHint: { color: Colors.textMuted, fontSize: FontSize.sm, marginTop: 4 },
+  empty: { alignItems: "center", paddingTop: 60 },
+  emptyEmoji: { fontSize: 40, marginBottom: Spacing.sm },
+  emptyText: { color: Colors.textMuted, textAlign: "center", fontSize: FontSize.lg },
 });

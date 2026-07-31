@@ -46,7 +46,7 @@ export default function LoginScreen({ onLogin, onRegister }: Props) {
       } else {
         await onLogin(email, password);
       }
-      navigation.reset({ index: 0, routes: [{ name: "Home" as never }] });
+      navigation.reset({ index: 0, routes: [{ name: "Main" as never }] });
     } catch (err: any) {
       setError(err.message);
     } finally {

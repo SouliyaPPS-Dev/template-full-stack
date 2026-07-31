@@ -57,16 +57,19 @@ function AdminSettings() {
   };
 
   return (
-    <div>
-      <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-4 md:mb-6">Settings</h1>
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl md:text-3xl font-display font-bold tracking-tight">Settings</h1>
+        <p className="text-sm text-muted-foreground mt-1">Database backup, export, and import tools.</p>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         {/* Backup Database */}
-        <Card>
+        <Card className="shadow-card hover:shadow-card-hover transition-shadow">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-                <Database className="h-5 w-5 text-blue-600" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                <Database className="h-5 w-5" />
               </div>
               <div>
                 <CardTitle className="text-base">Backup Database</CardTitle>
@@ -80,6 +83,7 @@ function AdminSettings() {
             </p>
             <Button
               className="w-full"
+              variant="outline"
               onClick={handleBackup}
               disabled={backupLoading}
             >
@@ -99,11 +103,11 @@ function AdminSettings() {
         </Card>
 
         {/* Export Data */}
-        <Card>
+        <Card className="shadow-card hover:shadow-card-hover transition-shadow">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
-                <Download className="h-5 w-5 text-green-600" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <Download className="h-5 w-5" />
               </div>
               <div>
                 <CardTitle className="text-base">Export Data</CardTitle>
@@ -137,11 +141,11 @@ function AdminSettings() {
         </Card>
 
         {/* Import Data */}
-        <Card>
+        <Card className="shadow-card hover:shadow-card-hover transition-shadow">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100">
-                <Upload className="h-5 w-5 text-orange-600" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <Upload className="h-5 w-5" />
               </div>
               <div>
                 <CardTitle className="text-base">Import Data</CardTitle>

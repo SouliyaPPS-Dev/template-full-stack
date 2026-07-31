@@ -21,11 +21,27 @@
       { "email": "admin@template.com", "full_name": "Admin", "role": "admin", "is_active": true }
     ],
     "categories": [
-      { "name": "Electronics", "slug": "electronics", "description": "Electronic devices and accessories", "sort_order": 1 },
-      { "name": "Clothing", "slug": "clothing", "description": "Apparel and fashion items", "sort_order": 2 },
-      { "name": "Home & Garden", "slug": "home-garden", "description": "Home improvement and garden supplies", "sort_order": 3 },
-      { "name": "Food & Beverages", "slug": "food-beverages", "description": "Food and drink items", "sort_order": 4 },
-      { "name": "Books", "slug": "books", "description": "Books and educational materials", "sort_order": 5 }
+      { "name": "Electronics", "slug": "electronics", "description": "Phones, tablets, and accessories", "sort_order": 1 },
+      { "name": "Clothing", "slug": "clothing", "description": "Men and women fashion", "sort_order": 2 },
+      { "name": "Home & Garden", "slug": "home-garden", "description": "Furniture and home decor", "sort_order": 3 },
+      { "name": "Sports", "slug": "sports", "description": "Sports equipment and gear", "sort_order": 4 },
+      { "name": "Books", "slug": "books", "description": "Physical and digital books", "sort_order": 5 }
+    ],
+    "products": [
+      { "name": "iPhone 15 Pro Max", "slug": "iphone-15-pro-max", "sku": "IPH15PM", "category_slug": "electronics", "description": "Latest Apple smartphone with A17 Pro chip", "cost_price": 999.0, "selling_price": 1299.99, "stock": 25, "is_featured": true },
+      { "name": "Samsung Galaxy S24", "slug": "samsung-galaxy-s24", "sku": "SGS24", "category_slug": "electronics", "description": "Samsung flagship with AI features", "cost_price": 699.0, "selling_price": 899.99, "stock": 30, "is_featured": true },
+      { "name": "MacBook Air M3", "slug": "macbook-air-m3", "sku": "MBA3", "category_slug": "electronics", "description": "Ultra-thin laptop with M3 chip", "cost_price": 899.0, "selling_price": 1099.99, "stock": 15, "is_featured": true },
+      { "name": "AirPods Pro 2", "slug": "airpods-pro-2", "sku": "APP2", "category_slug": "electronics", "description": "Active noise cancelling earbuds", "cost_price": 179.99, "selling_price": 249.99, "stock": 50, "is_featured": false },
+      { "name": "USB-C Hub 7-in-1", "slug": "usb-c-hub-7in1", "sku": "USB7", "category_slug": "electronics", "description": "Multiport adapter for MacBook", "cost_price": 19.99, "selling_price": 39.99, "stock": 100, "is_featured": false },
+      { "name": "Classic Cotton T-Shirt", "slug": "classic-cotton-tshirt", "sku": "CCT01", "category_slug": "clothing", "description": "100% cotton casual t-shirt", "cost_price": 10.0, "selling_price": 24.99, "stock": 200, "is_featured": false },
+      { "name": "Denim Jacket", "slug": "denim-jacket", "sku": "DJ01", "category_slug": "clothing", "description": "Vintage style denim jacket", "cost_price": 40.0, "selling_price": 79.99, "stock": 50, "is_featured": true },
+      { "name": "Running Shoes Pro", "slug": "running-shoes-pro", "sku": "RSP01", "category_slug": "clothing", "description": "Lightweight running shoes", "cost_price": 65.0, "selling_price": 129.99, "stock": 75, "is_featured": false },
+      { "name": "Ergonomic Office Chair", "slug": "ergonomic-office-chair", "sku": "EOC01", "category_slug": "home-garden", "description": "Adjustable lumbar support chair", "cost_price": 180.0, "selling_price": 349.99, "stock": 20, "is_featured": true },
+      { "name": "LED Desk Lamp", "slug": "led-desk-lamp", "sku": "LDL01", "category_slug": "home-garden", "description": "Dimmable LED desk lamp with USB port", "cost_price": 25.0, "selling_price": 49.99, "stock": 60, "is_featured": false },
+      { "name": "Yoga Mat Premium", "slug": "yoga-mat-premium", "sku": "YMP01", "category_slug": "sports", "description": "Non-slip exercise yoga mat", "cost_price": 15.0, "selling_price": 39.99, "stock": 80, "is_featured": false },
+      { "name": "Adjustable Dumbbells", "slug": "adjustable-dumbbells", "sku": "AD01", "category_slug": "sports", "description": "5-25 lb adjustable dumbbell set", "cost_price": 100.0, "selling_price": 199.99, "stock": 30, "is_featured": true },
+      { "name": "The Art of Code", "slug": "the-art-of-code", "sku": "TAOC", "category_slug": "books", "description": "Modern software engineering patterns", "cost_price": 10.0, "selling_price": 29.99, "stock": 100, "is_featured": false },
+      { "name": "Business Strategy 101", "slug": "business-strategy-101", "sku": "BS101", "category_slug": "books", "description": "Essential business strategy guide", "cost_price": 12.0, "selling_price": 34.99, "stock": 60, "is_featured": false }
     ]
   }
 }

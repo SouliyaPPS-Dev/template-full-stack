@@ -82,13 +82,19 @@ case "$1" in
       build)
         echo -e "${G}Building Web for production...${NC}"
         cd "$DIR/apps/web" && rm -rf dist .output && npx vite build
-        echo -e "${G}Build complete → apps/web/.output/public/${NC}"
+        echo -e "${G}Syncing build to root dist/ (served by HF app.py)...${NC}"
+        cd "$DIR" && rm -rf dist && cp -R apps/web/dist dist
+        echo -e "${G}Build complete → apps/web/dist + dist/${NC}"
+        ;;
+      deploy)
+        echo -e "${G}Deploying web + seed data to HuggingFace Space...${NC}"
+        bash "$DIR/scripts/deploy-hf.sh" "$3"
         ;;
       prod)
         echo -e "${G}Starting Web in PRODUCTION mode (HF API)...${NC}"
-        echo -e "${G}API: https://souliya-api-template.hf.space${NC}"
+        echo -e "${G}API: https://souliya-template.hf.space/api/v1${NC}"
         echo -e "${G}Web: http://localhost:8081${NC}"
-        cd "$DIR/apps/web" && VITE_API_URL="https://souliya-api-template.hf.space" npx vite --port 8081 --mode production
+        cd "$DIR/apps/web" && npx vite --port 8081 --mode production
         ;;
       dev)
         start_api
@@ -113,7 +119,7 @@ case "$1" in
       dev)
         start_api
         echo -e "${G}Starting React Native in DEV mode (local API :8080)...${NC}"
-        echo -e "${G}API: http://10.238.134.232:8080${NC}"
+        echo -e "${Y}API host auto-detected from Expo/Metro host (LAN IP of this machine)${NC}"
         cd "$DIR/apps/mobile-rn" && APP_ENV=development npx expo start
         ;;
       prod)
@@ -191,7 +197,8 @@ case "$1" in
   echo "  ./run web          API + Web dev server (port 8081)"
   echo "  ./run web dev      Web dev mode (local API :8080)"
   echo "  ./run web prod     Web prod mode (HF API :443)"
-  echo "  ./run web build    Build web for production"
+  echo "  ./run web build    Build web for production + sync dist/"
+  echo "  ./run web deploy   Build, sync dist, upload seeds, push to HF Space"
     echo "  ./run mobile-rn    API + React Native (Expo Go)"
     echo "  ./run mobile-rn apk         Build Android APK (local)"
     echo "  ./run mobile-rn aab         Build Android App Bundle (local)"
