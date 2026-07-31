@@ -18,6 +18,7 @@ import { InstallButton } from "@/components/install-button";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet } from "@/components/ui/sheet";
+import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
@@ -54,27 +55,39 @@ function Brand({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function NavList({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+function NavList({ pathname, onNavigate, collapsed }: { pathname: string; onNavigate?: () => void; collapsed?: boolean }) {
   return (
-    <nav className="flex-1 space-y-1 p-3">
+    <nav className={cn("flex-1 space-y-1 p-3", collapsed && "space-y-2")}>
       {navItems.map((item) => {
         const active = isActive(pathname, item.path);
-        return (
+        const link = (
           <Link
             key={item.path}
             to={item.path}
             onClick={onNavigate}
             className={cn(
-              "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+              "group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+              collapsed ? "justify-center px-2" : "gap-3",
               active
                 ? "bg-primary/10 text-primary shadow-sm"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground"
             )}
           >
             <item.icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-110", active && "text-primary")} />
-            {item.label}
-            {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />}
+            {!collapsed && item.label}
+            {!collapsed && active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />}
           </Link>
+        );
+
+        if (!collapsed) return link;
+
+        return (
+          <TooltipRoot key={item.path} delayDuration={100}>
+            <TooltipTrigger asChild>{link}</TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>
+              {item.label}
+            </TooltipContent>
+          </TooltipRoot>
         );
       })}
     </nav>
@@ -98,53 +111,55 @@ export function AdminLayout() {
   return (
     <div className="flex min-h-screen bg-muted/40">
       {/* Desktop sidebar */}
-      <aside
-        className={cn(
-          "sticky top-0 hidden h-screen flex-col bg-card border-r transition-all duration-300 lg:flex",
-          collapsed ? "w-16" : "w-64"
-        )}
-      >
-        <div className={cn("flex h-16 items-center border-b px-4", collapsed && "justify-center px-2")}>
-          <Brand compact={collapsed} />
-        </div>
-        <div className={cn("flex flex-col flex-1 overflow-hidden", collapsed && "items-center")}>
-          <NavList pathname={location.pathname} />
-          <div className="border-t p-3 space-y-2">
-            {collapsed ? (
-              <Button variant="ghost" size="icon" className="w-full" onClick={() => setCollapsed(false)} title="Expand">
-                <PanelLeftOpen className="h-4 w-4" />
-              </Button>
-            ) : (
-              <>
-                <InstallButton admin className="w-full" />
-                {user && (
-                  <div className="flex items-center gap-2.5 rounded-lg bg-muted/60 p-2">
-                    <Avatar size="sm">
-                      <AvatarFallback>{initials(user.full_name)}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-semibold">{user.full_name}</p>
-                      <p className="truncate text-[11px] text-muted-foreground">{user.email}</p>
-                    </div>
-                  </div>
-                )}
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-muted-foreground hover:text-destructive"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="h-4 w-4" />
-                  Logout
-                </Button>
-                <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={() => setCollapsed(true)}>
-                  <PanelLeftClose className="h-4 w-4" />
-                  Collapse
-                </Button>
-              </>
-            )}
+      <TooltipProvider>
+        <aside
+          className={cn(
+            "sticky top-0 hidden h-screen flex-col bg-card border-r transition-all duration-300 lg:flex",
+            collapsed ? "w-16" : "w-64"
+          )}
+        >
+          <div className={cn("flex h-16 items-center border-b px-4", collapsed && "justify-center px-2")}>
+            <Brand compact={collapsed} />
           </div>
-        </div>
-      </aside>
+          <div className={cn("flex flex-col flex-1 overflow-hidden", collapsed && "items-center")}>
+            <NavList pathname={location.pathname} collapsed={collapsed} />
+            <div className="border-t p-3 space-y-2">
+              {collapsed ? (
+                <Button variant="ghost" size="icon" className="w-full" onClick={() => setCollapsed(false)}>
+                  <PanelLeftOpen className="h-4 w-4" />
+                </Button>
+              ) : (
+                <>
+                  <InstallButton admin className="w-full" />
+                  {user && (
+                    <div className="flex items-center gap-2.5 rounded-lg bg-muted/60 p-2">
+                      <Avatar size="sm">
+                        <AvatarFallback>{initials(user.full_name)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-semibold">{user.full_name}</p>
+                        <p className="truncate text-[11px] text-muted-foreground">{user.email}</p>
+                      </div>
+                    </div>
+                  )}
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-muted-foreground hover:text-destructive"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </Button>
+                  <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={() => setCollapsed(true)}>
+                    <PanelLeftClose className="h-4 w-4" />
+                    Collapse
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </aside>
+      </TooltipProvider>
 
       {/* Main column */}
       <div className="flex min-w-0 flex-1 flex-col">

@@ -5,8 +5,9 @@ DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$DIR"
 
 HF_REMOTE="${HF_REMOTE:-hf}"
-BUCKET="${HF_BUCKET:-souliya/api-template-storage}"
-MSG="${1:-chore: deploy web build + seed data to HF Space}"
+HF_SSH_KEY="${HF_SSH_KEY:-$HOME/.ssh/id_ed25519_template}"
+BUCKET="${HF_BUCKET:-souliya/template-storage}"
+MSG="${1:-chore: deploy web build + API to HF Space}"
 
 G='\033[0;32m'; Y='\033[1;33m'; R='\033[0;31m'; NC='\033[0m'
 
@@ -35,22 +36,32 @@ else
   echo -e "${Y}    hf CLI not authenticated - skipped (run: ./run seed or hf auth login)${NC}"
 fi
 
-echo -e "${G}==> 4/4 Pushing to HuggingFace Space...${NC}"
+echo -e "${G}==> 4/4 Pushing minimal Space snapshot to $HF_REMOTE...${NC}"
 if ! git remote get-url "$HF_REMOTE" >/dev/null 2>&1; then
   echo -e "${R}No git remote named '$HF_REMOTE'.${NC}"
   echo -e "${Y}Add it with:${NC}"
-  echo "  git remote add $HF_REMOTE https://huggingface.co/spaces/souliya/template"
+  echo "  git remote add $HF_REMOTE git@hf.co:spaces/souliya/template"
   exit 1
 fi
 
-git add -A
-git add -f dist
-if git diff --cached --quiet; then
-  echo -e "${Y}    nothing to commit (already up to date)${NC}"
-else
-  git commit -m "$MSG"
-fi
-git push "$HF_REMOTE" HEAD:main
+SSH_CMD="ssh -i $HF_SSH_KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+TMP="$(mktemp -d)"
+git worktree add -q --detach "$TMP" HEAD
+(
+  cd "$TMP"
+  git checkout -q --orphan hf-deploy
+  git rm -rf -q . 2>/dev/null || true
+  git clean -q -fdx
+  cp "$DIR/app.py" "$DIR/requirements.txt" "$DIR/README.md" "$DIR/.gitattributes" "$DIR/.gitignore" .
+  cp -R "$DIR/dist" dist
+  git add -A
+  git add -f dist
+  git commit -q -m "$MSG"
+  GIT_SSH_COMMAND="$SSH_CMD" git push "$HF_REMOTE" hf-deploy:main --force
+)
+cd "$DIR"
+git worktree remove "$TMP" --force
+git branch -D hf-deploy 2>/dev/null || true
 
 echo ""
 echo -e "${G}Deployed!${NC}"
