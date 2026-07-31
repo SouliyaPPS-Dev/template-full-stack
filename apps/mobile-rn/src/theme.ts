@@ -54,35 +54,38 @@ export const FontSize = {
   logo: 36,
 };
 
-const fontWeightNormal = Platform.OS === "android" ? "400" : "normal";
-const fontWeightMedium = Platform.OS === "android" ? "500" : "500";
-const fontWeightSemibold = Platform.OS === "android" ? "600" : "600";
-const fontWeightBold = Platform.OS === "android" ? "700" : "bold";
+export const Fonts = {
+  regular: "NotoSansLao_400Regular",
+  medium: "NotoSansLao_500Medium",
+  semibold: "NotoSansLao_600SemiBold",
+  bold: "NotoSansLao_700Bold",
+};
 
-const platformBold: TextStyle = { fontWeight: fontWeightSemibold as TextStyle["fontWeight"] };
-const platformBoldHeavy: TextStyle = { fontWeight: fontWeightBold as TextStyle["fontWeight"] };
+const fontNormal: TextStyle = { fontFamily: Fonts.regular };
+const platformBold: TextStyle = { fontFamily: Fonts.semibold };
+const platformBoldHeavy: TextStyle = { fontFamily: Fonts.bold };
 
 export const Typography: Record<string, TextStyle> = {
   logo: { ...platformBoldHeavy, fontSize: FontSize.logo, color: Colors.primary },
   heroTitle: { ...platformBoldHeavy, fontSize: FontSize.hero, textAlign: "center" },
-  heroSubtitle: { fontSize: FontSize.lg, color: Colors.textSecondary, textAlign: "center" },
+  heroSubtitle: { ...fontNormal, fontSize: FontSize.lg, color: Colors.textSecondary, textAlign: "center" },
   sectionTitle: { ...platformBoldHeavy, fontSize: FontSize.xxl },
   title: { ...platformBoldHeavy, fontSize: FontSize.title },
-  subtitle: { fontSize: FontSize.lg, color: Colors.textSecondary, marginTop: Spacing.sm },
-  body: { fontSize: FontSize.lg },
-  bodySecondary: { fontSize: FontSize.md, color: Colors.textSecondary },
-  bodyMuted: { fontSize: FontSize.md, color: Colors.textMuted },
-  label: { fontSize: FontSize.md, color: Colors.textSecondary },
-  value: { fontSize: FontSize.md, ...platformBold },
-  small: { fontSize: FontSize.xs, color: Colors.textMuted },
-  smallSecondary: { fontSize: FontSize.xs, color: Colors.textSecondary },
-  price: { fontSize: FontSize.xl, ...platformBoldHeavy, color: Colors.primary },
-  comparePrice: { fontSize: FontSize.md, color: Colors.textMuted, textDecorationLine: "line-through" },
+  subtitle: { ...fontNormal, fontSize: FontSize.lg, color: Colors.textSecondary, marginTop: Spacing.sm },
+  body: { ...fontNormal, fontSize: FontSize.lg },
+  bodySecondary: { ...fontNormal, fontSize: FontSize.md, color: Colors.textSecondary },
+  bodyMuted: { ...fontNormal, fontSize: FontSize.md, color: Colors.textMuted },
+  label: { ...fontNormal, fontSize: FontSize.md, color: Colors.textSecondary },
+  value: { ...fontNormal, fontSize: FontSize.md, ...platformBold },
+  small: { ...fontNormal, fontSize: FontSize.xs, color: Colors.textMuted },
+  smallSecondary: { ...fontNormal, fontSize: FontSize.xs, color: Colors.textSecondary },
+  price: { ...fontNormal, fontSize: FontSize.xl, ...platformBoldHeavy, color: Colors.primary },
+  comparePrice: { ...fontNormal, fontSize: FontSize.md, color: Colors.textMuted, textDecorationLine: "line-through" },
   buttonText: { ...platformBold, color: Colors.white, fontSize: FontSize.lg },
-  error: { color: Colors.error, fontSize: FontSize.md },
-  success: { color: Colors.success, fontSize: FontSize.md, textAlign: "center" },
-  link: { color: Colors.primary, textAlign: "center", marginTop: Spacing.lg, fontSize: FontSize.md },
-  emptyText: { color: Colors.textMuted, textAlign: "center", fontSize: FontSize.lg },
+  error: { ...fontNormal, color: Colors.error, fontSize: FontSize.md },
+  success: { ...fontNormal, color: Colors.success, fontSize: FontSize.md, textAlign: "center" },
+  link: { ...fontNormal, color: Colors.primary, textAlign: "center", marginTop: Spacing.lg, fontSize: FontSize.md },
+  emptyText: { ...fontNormal, color: Colors.textMuted, textAlign: "center", fontSize: FontSize.lg },
 };
 
 export const CardShadow: ViewStyle = Platform.select({
@@ -150,6 +153,7 @@ export const ButtonDanger: ViewStyle = {
 };
 
 export const Input: TextStyle = {
+  ...fontNormal,
   borderWidth: 1,
   borderColor: Colors.border,
   borderRadius: BorderRadius.md,

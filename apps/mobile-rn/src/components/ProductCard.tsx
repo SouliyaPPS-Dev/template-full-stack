@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { Product } from "../types";
 import { useResponsive } from "../hooks/useResponsive";
-import { Colors, Spacing, BorderRadius, FontSize } from "../theme";
+import { Colors, Spacing, BorderRadius, FontSize, Fonts } from "../theme";
 import { formatMoney } from "../utils/format";
 
 interface Props {
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   saleBadgeText: {
     color: Colors.white,
     fontSize: FontSize.xs,
-    fontWeight: "700",
+    fontFamily: Fonts.bold,
   },
   soldOutOverlay: {
     position: "absolute",
@@ -146,14 +146,14 @@ const styles = StyleSheet.create({
   soldOutText: {
     color: Colors.white,
     fontSize: FontSize.xs,
-    fontWeight: "700",
+    fontFamily: Fonts.bold,
   },
   info: {
     padding: Spacing.md,
   },
   name: {
     fontSize: FontSize.lg,
-    fontWeight: Platform.OS === "android" ? "700" : "600",
+    fontFamily: Fonts.semibold,
     marginBottom: Spacing.xs,
     color: Colors.text,
   },

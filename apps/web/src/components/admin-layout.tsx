@@ -21,6 +21,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { cn } from "@/lib/utils";
 import { adminLogout } from "@/services/api";
 import { useAuth } from "@/hooks/use-auth";
@@ -137,8 +138,8 @@ export function AdminLayout() {
                         <AvatarFallback>{initials(user.full_name)}</AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
-                        <p className="truncate text-xs font-semibold">{user.full_name}</p>
-                        <p className="truncate text-[11px] text-muted-foreground">{user.email}</p>
+                        <p className="truncate text-xs font-semibold" data-no-translate>{user.full_name}</p>
+                        <p className="truncate text-[11px] text-muted-foreground" data-no-translate>{user.email}</p>
                       </div>
                     </div>
                   )}
@@ -183,6 +184,7 @@ export function AdminLayout() {
               View store
             </Link>
             <InstallButton admin className="hidden sm:inline-flex" />
+            <LanguageSwitcher />
             <ThemeToggle />
             {user && (
               <div className="hidden md:flex items-center gap-2.5 pl-2 ml-1 border-l">
@@ -190,8 +192,8 @@ export function AdminLayout() {
                   <AvatarFallback>{initials(user.full_name)}</AvatarFallback>
                 </Avatar>
                 <div className="leading-tight">
-                  <p className="text-xs font-semibold">{user.full_name}</p>
-                  <p className="text-[11px] text-muted-foreground capitalize">{user.role}</p>
+                  <p className="text-xs font-semibold" data-no-translate>{user.full_name}</p>
+                  <p className="text-[11px] text-muted-foreground capitalize" data-no-translate>{user.role}</p>
                 </div>
               </div>
             )}
@@ -211,14 +213,17 @@ export function AdminLayout() {
           <NavList pathname={location.pathname} onNavigate={() => setMobileOpen(false)} />
           <Separator className="my-3" />
           <InstallButton admin className="w-full" />
+          <div className="flex justify-end">
+            <LanguageSwitcher />
+          </div>
           {user && (
             <div className="flex items-center gap-2.5 rounded-lg bg-muted/60 p-2">
               <Avatar size="sm">
                 <AvatarFallback>{initials(user.full_name)}</AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <p className="truncate text-xs font-semibold">{user.full_name}</p>
-                <p className="truncate text-[11px] text-muted-foreground">{user.email}</p>
+                <p className="truncate text-xs font-semibold" data-no-translate>{user.full_name}</p>
+                <p className="truncate text-[11px] text-muted-foreground" data-no-translate>{user.email}</p>
               </div>
             </div>
           )}

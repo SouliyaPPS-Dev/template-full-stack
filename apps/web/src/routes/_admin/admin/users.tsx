@@ -217,14 +217,14 @@ function AdminUsers() {
                               {!user.avatar_url && <AvatarFallback>{initials(user.full_name)}</AvatarFallback>}
                             </Avatar>
                             <div className="min-w-0">
-                              <p className="font-medium truncate">{user.full_name}</p>
-                              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                              <p className="font-medium truncate" data-no-translate>{user.full_name}</p>
+                              <p className="text-xs text-muted-foreground truncate" data-no-translate>{user.email}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="p-3 text-muted-foreground hidden sm:table-cell">{user.phone || "—"}</td>
+                        <td className="p-3 text-muted-foreground hidden sm:table-cell" data-no-translate>{user.phone || "—"}</td>
                         <td className="p-3 text-center">
-                          <Badge variant={roleBadgeVariant(user.role)} className="capitalize">
+                          <Badge variant={roleBadgeVariant(user.role)} className="capitalize" data-no-translate>
                             {user.role}
                           </Badge>
                         </td>
@@ -233,7 +233,7 @@ function AdminUsers() {
                             {user.is_active ? "Active" : "Inactive"}
                           </Badge>
                         </td>
-                        <td className="p-3 text-muted-foreground hidden md:table-cell">{formatDate(user.created_at)}</td>
+                        <td className="p-3 text-muted-foreground hidden md:table-cell" data-no-translate>{formatDate(user.created_at)}</td>
                         <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-1">
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(user)}>

@@ -6,12 +6,11 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
-  Platform,
 } from "react-native";
 import { useProducts } from "../hooks/useQueries";
 import { useResponsive } from "../hooks/useResponsive";
 import ProductCard from "../components/ProductCard";
-import { Colors, Spacing, BorderRadius, FontSize } from "../theme";
+import { Colors, Spacing, BorderRadius, FontSize, Fonts } from "../theme";
 
 export default function ProductsScreen() {
   const { data: products, isLoading, error } = useProducts();
@@ -102,7 +101,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: FontSize.title,
-    fontWeight: Platform.OS === "android" ? "700" : "bold",
+    fontFamily: Fonts.bold,
     color: Colors.text,
   },
   countBadge: {
@@ -111,7 +110,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: BorderRadius.full,
   },
-  count: { fontSize: 13, color: Colors.primary, fontWeight: "600" },
+  count: { fontSize: 13, color: Colors.primary, fontFamily: Fonts.semibold },
   searchContainer: {
     paddingVertical: Spacing.md,
   },
@@ -138,8 +137,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: Spacing.md,
   },
-  errorIconText: { color: Colors.white, fontSize: 28, fontWeight: "700" },
-  errorText: { color: Colors.error, fontSize: FontSize.lg, fontWeight: "600" },
+  errorIconText: { color: Colors.white, fontSize: 28, fontFamily: Fonts.bold },
+  errorText: { color: Colors.error, fontSize: FontSize.lg, fontFamily: Fonts.semibold },
   errorHint: { color: Colors.textMuted, fontSize: FontSize.sm, marginTop: 4 },
   empty: { alignItems: "center", paddingTop: 60 },
   emptyEmoji: { fontSize: 40, marginBottom: Spacing.sm },

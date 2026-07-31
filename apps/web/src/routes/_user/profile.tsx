@@ -129,9 +129,9 @@ function ProfilePage() {
             {!avatarUrl && <AvatarFallback className="bg-white/20 text-white">{initials(user.full_name)}</AvatarFallback>}
           </Avatar>
           <div className="min-w-0">
-            <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight truncate">{user.full_name}</h1>
-            <p className="text-sm text-primary-foreground/80 truncate">{user.email}</p>
-            <Badge variant={statusBadgeVariant(user.role)} className="mt-2 capitalize border-transparent bg-white/20 text-white">
+            <h1 className="font-display text-2xl md:text-3xl font-bold tracking-tight truncate" data-no-translate>{user.full_name}</h1>
+            <p className="text-sm text-primary-foreground/80 truncate" data-no-translate>{user.email}</p>
+            <Badge variant={statusBadgeVariant(user.role)} className="mt-2 capitalize border-transparent bg-white/20 text-white" data-no-translate>
               {user.role}
             </Badge>
           </div>
@@ -151,7 +151,7 @@ function ProfilePage() {
               </span>
               <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">Email</p>
-                <p className="text-sm truncate">{user.email}</p>
+                <p className="text-sm truncate" data-no-translate>{user.email}</p>
               </div>
             </div>
             <Separator />
@@ -161,7 +161,7 @@ function ProfilePage() {
               </span>
               <div>
                 <p className="text-xs text-muted-foreground">Role</p>
-                <p className="text-sm capitalize">{user.role}</p>
+                <p className="text-sm capitalize" data-no-translate>{user.role}</p>
               </div>
             </div>
             <Separator />
@@ -171,7 +171,7 @@ function ProfilePage() {
               </span>
               <div>
                 <p className="text-xs text-muted-foreground">Member Since</p>
-                <p className="text-sm">{mounted ? formattedDate : "\u00A0"}</p>
+                <p className="text-sm" data-no-translate>{mounted ? formattedDate : "\u00A0"}</p>
               </div>
             </div>
           </CardContent>

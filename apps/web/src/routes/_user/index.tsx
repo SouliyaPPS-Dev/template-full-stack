@@ -115,7 +115,7 @@ function HomePage() {
             Full-stack commerce template
           </Badge>
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-display font-extrabold tracking-tight text-balance animate-fade-up [animation-delay:60ms]">
-            Welcome to <span className="text-gradient">{storeName}</span>
+            Welcome to <span className="text-gradient" data-no-translate>{storeName}</span>
           </h1>
           <p className="mt-4 md:mt-5 text-base md:text-xl text-muted-foreground text-balance animate-fade-up [animation-delay:120ms]">
             A modern full-stack commerce platform — React, TanStack, Go, Rust &amp; PostgreSQL —
@@ -180,7 +180,7 @@ function HomePage() {
                     <div className="mb-3 flex h-14 w-14 md:h-16 md:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 text-2xl md:text-3xl transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
                       {categoryEmoji[i % categoryEmoji.length]}
                     </div>
-                    <CardTitle className="text-xs md:text-sm font-semibold">{cat.name}</CardTitle>
+                    <CardTitle className="text-xs md:text-sm font-semibold" data-no-translate>{cat.name}</CardTitle>
                   </CardHeader>
                 </Card>
               </Link>
@@ -252,12 +252,13 @@ function ProductCardView({ product }: { product: Product }) {
       <Card className="overflow-hidden hover:shadow-card-hover hover:border-primary/30 transition-all duration-300 group-hover:-translate-y-1 h-full">
         <div className="relative aspect-square bg-muted overflow-hidden">
           {product.images?.[0] ? (
-            <img
-              src={product.images[0]}
-              alt={product.name}
-              loading="lazy"
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
+          <img
+            src={product.images[0]}
+            alt={product.name}
+            loading="lazy"
+            data-no-translate
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
               <Package className="h-10 w-10 md:h-12 md:w-12" />
@@ -272,7 +273,7 @@ function ProductCardView({ product }: { product: Product }) {
           )}
         </div>
         <div className="p-3 md:p-4">
-          <h3 className="line-clamp-1 text-sm md:text-base font-semibold">{product.name}</h3>
+          <h3 className="line-clamp-1 text-sm md:text-base font-semibold" data-no-translate>{product.name}</h3>
           <div className="mt-1.5 flex items-baseline gap-2">
             <span className="font-display font-bold text-primary">{formatMoney(product.selling_price)}</span>
             {product.compare_price > product.selling_price && (

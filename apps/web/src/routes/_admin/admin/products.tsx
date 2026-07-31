@@ -227,10 +227,10 @@ function AdminProducts() {
                                 <Package className="h-5 w-5 text-muted-foreground" />
                               )}
                             </div>
-                            <span className="font-medium truncate">{product.name}</span>
+                            <span className="font-medium truncate" data-no-translate>{product.name}</span>
                           </div>
                         </td>
-                        <td className="p-3 text-muted-foreground hidden sm:table-cell">{product.sku || "—"}</td>
+                        <td className="p-3 text-muted-foreground hidden sm:table-cell" data-no-translate>{product.sku || "—"}</td>
                         <td className="p-3 text-right text-muted-foreground hidden md:table-cell">{formatMoney(product.cost_price)}</td>
                         <td className="p-3 text-right font-display font-bold">{formatMoney(product.selling_price)}</td>
                         <td className="p-3 text-right">

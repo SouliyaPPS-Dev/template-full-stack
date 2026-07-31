@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import {
   Store,
   ShoppingCart,
@@ -99,6 +100,7 @@ function UserLayout() {
               </Button>
             ))}
             <div className="mx-1 h-5 w-px bg-border" />
+            <LanguageSwitcher />
             <ThemeToggle />
             <InstallButton />
           </nav>
@@ -112,7 +114,7 @@ function UserLayout() {
                     <Avatar size="sm" className="h-6 w-6">
                       <AvatarFallback className="text-[10px]">{initials(user.full_name)}</AvatarFallback>
                     </Avatar>
-                    {user.full_name}
+                    <span data-no-translate>{user.full_name}</span>
                   </Link>
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleLogout}>
@@ -140,6 +142,7 @@ function UserLayout() {
 
           {/* Mobile controls */}
           <div className="flex items-center gap-1 md:hidden">
+            <LanguageSwitcher />
             <ThemeToggle />
             <Button
               variant="ghost"
@@ -190,7 +193,7 @@ function UserLayout() {
                 <Link to="/profile">
                   <span className="flex items-center gap-2.5">
                     <UserRound className="h-4 w-4" />
-                    {user.full_name}
+                    <span data-no-translate>{user.full_name}</span>
                   </span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>
@@ -216,8 +219,9 @@ function UserLayout() {
               </Button>
             </>
           )}
-          <div className="mt-4">
-            <InstallButton className="w-full" />
+          <div className="mt-4 flex items-center justify-between">
+            <LanguageSwitcher />
+            <InstallButton className="w-full ml-3" />
           </div>
         </nav>
       </Sheet>

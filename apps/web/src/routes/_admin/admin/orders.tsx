@@ -74,16 +74,16 @@ function AdminOrders() {
                   {orders && orders.length > 0 ? (
                     orders.map((order) => (
                       <tr key={order.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                        <td className="p-3 font-display font-semibold">{order.order_number}</td>
-                        <td className="p-3 text-muted-foreground hidden sm:table-cell">{formatDate(order.created_at)}</td>
+                        <td className="p-3 font-display font-semibold" data-no-translate>{order.order_number}</td>
+                        <td className="p-3 text-muted-foreground hidden sm:table-cell" data-no-translate>{formatDate(order.created_at)}</td>
                         <td className="p-3 text-right font-display font-bold">{formatMoney(order.grand_total)}</td>
                         <td className="p-3 text-center">
-                          <Badge variant={statusBadgeVariant(order.status)} className="capitalize">
+                          <Badge variant={statusBadgeVariant(order.status)} className="capitalize" data-no-translate>
                             {order.status}
                           </Badge>
                         </td>
                         <td className="p-3 text-center hidden sm:table-cell">
-                          <Badge variant={statusBadgeVariant(order.payment_status)} className="capitalize">
+                          <Badge variant={statusBadgeVariant(order.payment_status)} className="capitalize" data-no-translate>
                             {order.payment_status}
                           </Badge>
                         </td>

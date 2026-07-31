@@ -177,15 +177,15 @@ function AdminDashboard() {
               {orders.map((order) => (
                 <div key={order.id} className="flex items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{order.order_number}</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(order.created_at)}</p>
+                    <p className="truncate text-sm font-medium" data-no-translate>{order.order_number}</p>
+                    <p className="text-xs text-muted-foreground" data-no-translate>{formatDate(order.created_at)}</p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <span className="font-display text-sm font-bold">{formatMoney(order.grand_total)}</span>
-                    <Badge variant={statusBadgeVariant(order.status)} className="hidden sm:inline-flex">
+                    <Badge variant={statusBadgeVariant(order.status)} className="hidden sm:inline-flex" data-no-translate>
                       {order.status}
                     </Badge>
-                    <Badge variant={statusBadgeVariant(order.payment_status)}>{order.payment_status}</Badge>
+                    <Badge variant={statusBadgeVariant(order.payment_status)} data-no-translate>{order.payment_status}</Badge>
                   </div>
                 </div>
               ))}

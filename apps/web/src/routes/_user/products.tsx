@@ -120,13 +120,13 @@ function ProductsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl md:text-3xl font-display font-bold tracking-tight">
-              {activeCategory ? activeCategory.name : "Products"}
+              {activeCategory ? <span data-no-translate>{activeCategory.name}</span> : "Products"}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               {filtered.length} item{filtered.length !== 1 ? "s" : ""}
               {activeCategory && (
                 <>
-                  {" "}in <span className="font-medium text-foreground">{activeCategory.name}</span>
+                  {" "}in <span className="font-medium text-foreground" data-no-translate>{activeCategory.name}</span>
                 </>
               )}
             </p>
@@ -156,6 +156,7 @@ function ProductsPage() {
               active={activeCategory?.id === c.id}
               label={c.name}
               slug={c.slug}
+              noTranslate
             />
           ))}
         </div>
@@ -209,11 +210,14 @@ function CategoryChip({
   active,
   label,
   slug,
+  noTranslate,
 }: {
   active: boolean;
   label: string;
   slug?: string;
+  noTranslate?: boolean;
 }) {
+  const content = noTranslate ? <span data-no-translate>{label}</span> : label;
   if (slug) {
     return (
       <Link
@@ -226,7 +230,7 @@ function CategoryChip({
             : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
         )}
       >
-        {label}
+        {content}
       </Link>
     );
   }
@@ -240,7 +244,7 @@ function CategoryChip({
           : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
       )}
     >
-      {label}
+      {content}
     </Link>
   );
 }
@@ -256,6 +260,7 @@ function ProductCardView({ product }: { product: Product }) {
             src={product.images[0]}
             alt={product.name}
             loading="lazy"
+            data-no-translate
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
@@ -275,8 +280,8 @@ function ProductCardView({ product }: { product: Product }) {
         )}
       </div>
       <div className="flex flex-1 flex-col p-3 md:p-4">
-        <h3 className="line-clamp-1 text-sm md:text-base font-semibold">{product.name}</h3>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">SKU: {product.sku}</p>
+        <h3 className="line-clamp-1 text-sm md:text-base font-semibold" data-no-translate>{product.name}</h3>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">SKU: <span data-no-translate>{product.sku}</span></p>
         <div className="mt-2 flex items-baseline gap-2">
           <span className="font-display font-bold text-primary">{formatMoney(product.selling_price)}</span>
           {onSale && (

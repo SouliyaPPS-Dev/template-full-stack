@@ -13,6 +13,13 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useFonts } from "expo-font";
+import {
+  NotoSansLao_400Regular,
+  NotoSansLao_500Medium,
+  NotoSansLao_600SemiBold,
+  NotoSansLao_700Bold,
+} from "@expo-google-fonts/noto-sans-lao";
 import {
   login as apiLogin,
   register as apiRegister,
@@ -29,7 +36,7 @@ import ProductsScreen from "./screens/ProductsScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import CartScreen from "./screens/CartScreen";
 import OrdersScreen from "./screens/OrdersScreen";
-import { Colors } from "./theme";
+import { Colors, Fonts } from "./theme";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -83,7 +90,7 @@ function MainTabs({
       screenOptions={{
         headerStyle: { backgroundColor: Colors.primary },
         headerTintColor: Colors.white,
-        headerTitleStyle: { fontWeight: "700" },
+        headerTitleStyle: { fontFamily: Fonts.bold },
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarStyle: {
@@ -94,7 +101,7 @@ function MainTabs({
           paddingTop: 6,
           paddingBottom: 8,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        tabBarLabelStyle: { fontSize: 11, fontFamily: Fonts.semibold },
       }}
     >
       <Tab.Screen
@@ -262,6 +269,21 @@ function RootNavigator() {
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    NotoSansLao_400Regular,
+    NotoSansLao_500Medium,
+    NotoSansLao_600SemiBold,
+    NotoSansLao_700Bold,
+  });
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
