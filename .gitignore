@@ -11,4 +11,9 @@ dist/
 tmp/
 **/tmp/main
 *.air
+apps/mobile-rn/builds/
+services/api-gateway/bin/
+*.DS_Store
+*.apk
+*.aab
 
