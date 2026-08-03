@@ -64,7 +64,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               _emailController.text.trim(),
               _passwordController.text,
               _fullNameController.text.trim(),
-              phone: _phoneController.text.isEmpty ? null : _phoneController.text.trim(),
+              phone: _phoneController.text.isEmpty
+                  ? null
+                  : _phoneController.text.trim(),
             );
       } else {
         await ref.read(authProvider.notifier).login(
@@ -85,7 +87,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final width = MediaQuery.sizeOf(context).width;
     final isWide = width >= 1024;
     final isMedium = width >= 600;
-    final maxWidth = isWide ? 420.0 : isMedium ? 400.0 : width - 48;
+    final maxWidth = isWide
+        ? 420.0
+        : isMedium
+            ? 400.0
+            : width - 48;
 
     return Scaffold(
       body: Center(
@@ -98,19 +104,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.store, size: isWide ? 80 : 64, color: Theme.of(context).colorScheme.primary),
+                  Icon(Icons.store,
+                      size: isWide ? 80 : 64,
+                      color: Theme.of(context).colorScheme.primary),
                   const SizedBox(height: 24),
                   Text(
                     _isSignUp ? 'Create Account' : 'Sign In',
-                    style: TextStyle(fontSize: isWide ? 32 : 28, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        fontSize: isWide ? 32 : 28,
+                        fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _isSignUp ? 'Create your account' : 'Sign in to your account',
+                    _isSignUp
+                        ? 'Create your account'
+                        : 'Sign in to your account',
                     style: TextStyle(color: Colors.grey.shade500),
                   ),
                   const SizedBox(height: 32),
-
                   if (_isSignUp) ...[
                     TextFormField(
                       controller: _fullNameController,
@@ -132,7 +143,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 16),
                   ],
-
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -143,7 +153,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     validator: _validateEmail,
                   ),
                   const SizedBox(height: 16),
-
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
@@ -151,13 +160,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       labelText: 'Password',
                       prefixIcon: const Icon(Icons.lock),
                       suffixIcon: IconButton(
-                        icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
-                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        icon: Icon(_obscurePassword
+                            ? Icons.visibility
+                            : Icons.visibility_off),
+                        onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword),
                       ),
                     ),
                     validator: _validatePassword,
                   ),
-
                   if (_error != null) ...[
                     const SizedBox(height: 12),
                     Container(
@@ -168,14 +179,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                          Icon(Icons.error_outline,
+                              color: Colors.red.shade700, size: 20),
                           const SizedBox(width: 8),
-                          Expanded(child: Text(_error!, style: TextStyle(color: Colors.red.shade700, fontSize: 14))),
+                          Expanded(
+                              child: Text(_error!,
+                                  style: TextStyle(
+                                      color: Colors.red.shade700,
+                                      fontSize: 14))),
                         ],
                       ),
                     ),
                   ],
-
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
@@ -185,7 +200,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ? const SizedBox(
                               height: 20,
                               width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
                             )
                           : Text(_isSignUp ? 'Create Account' : 'Sign In'),
                     ),
@@ -200,7 +216,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       });
                     },
                     child: Text(
-                      _isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up",
+                      _isSignUp
+                          ? 'Already have an account? Sign In'
+                          : "Don't have an account? Sign Up",
                     ),
                   ),
                 ],

@@ -598,6 +598,39 @@ if __name__ == "__main__":
             ]
         return [{"key": r["setting_key"], "value": r["setting_value"], "description": r["description"]} for r in rows]
 
+    _ALLOWED_SETTINGS = {"store_name", "store_phone", "currency", "tax_percent", "store_logo"}
+    _MAX_SETTING_VALUE = 1_000_000
+
+    class SettingUpdate(BaseModel):
+        key: str
+        value: str
+
+    class SettingsUpdateReq(BaseModel):
+        settings: list[SettingUpdate]
+
+    @app.put("/api/v1/settings")
+    def api_update_settings(data: SettingsUpdateReq, request: Request):
+        user = get_current_user(_bearer_token(request))
+        if user["role"] not in ("admin", "superadmin"):
+            raise HTTPException(403, "admin required")
+        if not data.settings:
+            raise HTTPException(400, "settings required")
+        conn = get_db()
+        for item in data.settings:
+            if item.key not in _ALLOWED_SETTINGS:
+                continue
+            if len(item.value) > _MAX_SETTING_VALUE:
+                conn.close()
+                raise HTTPException(400, f"setting '{item.key}' value is too large")
+            conn.execute(
+                "INSERT INTO system_settings (setting_key, setting_value, description) VALUES (?,?,?) "
+                "ON CONFLICT(setting_key) DO UPDATE SET setting_value=excluded.setting_value, updated_at=datetime('now')",
+                (item.key, item.value, ""))
+        conn.commit()
+        rows = conn.execute("SELECT setting_key, setting_value, description FROM system_settings ORDER BY id").fetchall()
+        conn.close()
+        return [{"key": r["setting_key"], "value": r["setting_value"], "description": r["description"]} for r in rows]
+
     # ── Serve SPA assets via middleware ──
     _MIME = {
         ".js": "application/javascript", ".css": "text/css",

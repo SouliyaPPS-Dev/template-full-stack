@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/models.dart';
-import '../../core/config.dart';
+import '../../core/format.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
@@ -43,11 +43,13 @@ class ProductCard extends StatelessWidget {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             ),
                             errorWidget: (_, __, ___) => const Center(
-                              child: Icon(Icons.image, size: 48, color: Colors.grey),
+                              child: Icon(Icons.image,
+                                  size: 48, color: Colors.grey),
                             ),
                           )
                         : const Center(
-                            child: Icon(Icons.image, size: 48, color: Colors.grey),
+                            child:
+                                Icon(Icons.image, size: 48, color: Colors.grey),
                           ),
                   ),
                   if (product.onSale)
@@ -55,14 +57,18 @@ class ProductCard extends StatelessWidget {
                       top: 8,
                       left: 8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.red,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           '-${product.discountPercent.toStringAsFixed(0)}%',
-                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
@@ -71,7 +77,11 @@ class ProductCard extends StatelessWidget {
                       child: Container(
                         color: Colors.black.withAlpha(100),
                         child: const Center(
-                          child: Text('OUT OF STOCK', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                          child: Text('OUT OF STOCK',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12)),
                         ),
                       ),
                     ),
@@ -87,7 +97,8 @@ class ProductCard extends StatelessWidget {
                   children: [
                     Text(
                       product.name,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -95,13 +106,14 @@ class ProductCard extends StatelessWidget {
                     if (product.sku.isNotEmpty && !isCompact)
                       Text(
                         'SKU: ${product.sku}',
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade500),
                       ),
                     const Spacer(),
                     Row(
                       children: [
                         Text(
-                          '$currencySymbol ${product.sellingPrice.toStringAsFixed(0)}',
+                          formatMoney(product.sellingPrice),
                           style: TextStyle(
                             fontSize: isCompact ? 14 : 16,
                             fontWeight: FontWeight.bold,
@@ -111,7 +123,7 @@ class ProductCard extends StatelessWidget {
                         if (product.onSale && !isCompact) ...[
                           const SizedBox(width: 6),
                           Text(
-                            '$currencySymbol ${product.comparePrice.toStringAsFixed(0)}',
+                            formatMoney(product.comparePrice),
                             style: const TextStyle(
                               fontSize: 11,
                               color: Colors.grey,
@@ -123,7 +135,9 @@ class ProductCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      product.inStock ? '${product.stock} in stock' : 'Out of stock',
+                      product.inStock
+                          ? '${product.stock} in stock'
+                          : 'Out of stock',
                       style: TextStyle(
                         fontSize: 11,
                         color: product.inStock ? Colors.green : Colors.red,

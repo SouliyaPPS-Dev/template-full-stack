@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/models.dart';
 import '../../../core/api_service.dart';
-import '../../../core/config.dart';
+import '../../../core/format.dart';
 import '../../../shared/breakpoints.dart';
 import '../../cart/providers/cart_provider.dart';
 
@@ -12,7 +12,8 @@ class ProductDetailScreen extends ConsumerStatefulWidget {
   const ProductDetailScreen({super.key, required this.productId});
 
   @override
-  ConsumerState<ProductDetailScreen> createState() => _ProductDetailScreenState();
+  ConsumerState<ProductDetailScreen> createState() =>
+      _ProductDetailScreenState();
 }
 
 class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
@@ -73,7 +74,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               ),
             ],
           ),
-          body: isWide ? _buildWideLayout(context, product) : _buildNarrowLayout(context, product),
+          body: isWide
+              ? _buildWideLayout(context, product)
+              : _buildNarrowLayout(context, product),
           bottomNavigationBar: _buildBottomBar(context, product),
         );
       },
@@ -113,7 +116,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             color: Colors.grey.shade100,
             child: product.images.isNotEmpty
                 ? Image.network(
-                    product.images[_selectedImage.clamp(0, product.images.length - 1)],
+                    product.images[
+                        _selectedImage.clamp(0, product.images.length - 1)],
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => const Center(
                       child: Icon(Icons.image, size: 64, color: Colors.grey),
@@ -152,7 +156,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     child: Image.network(
                       product.images[index],
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 24),
+                      errorBuilder: (_, __, ___) =>
+                          const Icon(Icons.image, size: 24),
                     ),
                   ),
                 );
@@ -178,16 +183,21 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               ),
               child: Text(
                 '-${product.discountPercent.toStringAsFixed(0)}% OFF',
-                style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.bold, fontSize: 12),
+                style: TextStyle(
+                    color: Colors.red.shade700,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12),
               ),
             ),
           const SizedBox(height: 8),
-          Text(product.name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          Text(product.name,
+              style:
+                  const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Row(
             children: [
               Text(
-                '$currencySymbol ${product.sellingPrice.toStringAsFixed(0)}',
+                formatMoney(product.sellingPrice),
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -197,7 +207,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               if (product.onSale) ...[
                 const SizedBox(width: 12),
                 Text(
-                  '$currencySymbol ${product.comparePrice.toStringAsFixed(0)}',
+                  formatMoney(product.comparePrice),
                   style: const TextStyle(
                     fontSize: 16,
                     color: Colors.grey,
@@ -211,19 +221,25 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           if (product.sku.isNotEmpty) _infoRow('SKU', product.sku),
           if (product.barcode.isNotEmpty) _infoRow('Barcode', product.barcode),
           _infoRow('Unit', product.unit),
-          _infoRow('Stock', product.inStock ? '${product.stock} available' : 'Out of stock'),
-          if (product.weight != null) _infoRow('Weight', '${product.weight} kg'),
+          _infoRow('Stock',
+              product.inStock ? '${product.stock} available' : 'Out of stock'),
+          if (product.weight != null)
+            _infoRow('Weight', '${product.weight} kg'),
           const SizedBox(height: 16),
           if (product.description.isNotEmpty) ...[
-            const Text('Description', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const Text('Description',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            Text(product.description, style: TextStyle(color: Colors.grey.shade700, height: 1.5)),
+            Text(product.description,
+                style: TextStyle(color: Colors.grey.shade700, height: 1.5)),
           ],
           if (product.features.isNotEmpty) ...[
             const SizedBox(height: 16),
-            const Text('Features', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const Text('Features',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            ...product.features.entries.map((e) => _infoRow(e.key, '${e.value}')),
+            ...product.features.entries
+                .map((e) => _infoRow(e.key, '${e.value}')),
           ],
           const SizedBox(height: 80),
         ],
@@ -236,7 +252,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
-        boxShadow: [BoxShadow(color: Colors.black.withAlpha(20), blurRadius: 8, offset: const Offset(0, -2))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withAlpha(20),
+              blurRadius: 8,
+              offset: const Offset(0, -2))
+        ],
       ),
       child: SafeArea(
         child: Row(
@@ -251,9 +272,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.remove, size: 20),
-                    onPressed: _quantity > 1 ? () => setState(() => _quantity--) : null,
+                    onPressed: _quantity > 1
+                        ? () => setState(() => _quantity--)
+                        : null,
                   ),
-                  Text('$_quantity', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text('$_quantity',
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold)),
                   IconButton(
                     icon: const Icon(Icons.add, size: 20),
                     onPressed: () => setState(() => _quantity++),
@@ -267,10 +292,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               child: FilledButton.icon(
                 onPressed: product.inStock
                     ? () {
-                        ref.read(cartProvider.notifier).addItem(product, quantity: _quantity);
+                        ref
+                            .read(cartProvider.notifier)
+                            .addItem(product, quantity: _quantity);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Added ${product.name} x$_quantity to cart'),
+                            content: Text(
+                                'Added ${product.name} x$_quantity to cart'),
                             action: SnackBarAction(
                               label: 'View Cart',
                               onPressed: () => context.push('/cart'),
@@ -300,7 +328,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             width: 100,
             child: Text(label, style: const TextStyle(color: Colors.grey)),
           ),
-          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500))),
+          Expanded(
+              child: Text(value,
+                  style: const TextStyle(fontWeight: FontWeight.w500))),
         ],
       ),
     );

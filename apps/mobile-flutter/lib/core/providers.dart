@@ -36,10 +36,20 @@ class AuthState {
 }
 
 class AuthNotifier extends Notifier<AuthState> {
+  static bool _sessionListenerRegistered = false;
+
   @override
   AuthState build() {
+    if (!_sessionListenerRegistered) {
+      _sessionListenerRegistered = true;
+      ApiService.onSessionExpired(_handleSessionExpired);
+    }
     _init();
     return AuthState();
+  }
+
+  void _handleSessionExpired() {
+    state = state.copyWith(clearUser: true, loading: false);
   }
 
   Future<void> _init() async {
@@ -64,8 +74,8 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> register(String email, String password, String fullName,
       {String? phone}) async {
-    final data = await ApiService.register(email, password, fullName,
-        phone: phone);
+    final data =
+        await ApiService.register(email, password, fullName, phone: phone);
     state = state.copyWith(user: data.user);
   }
 
@@ -86,6 +96,19 @@ final authProvider = NotifierProvider<AuthNotifier, AuthState>(
   AuthNotifier.new,
 );
 
+// ── Health Check Provider ─────────────────────────────────────
+
+final healthCheckProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  return ApiService.healthCheck();
+});
+
+// ── Endpoint Tests Provider ───────────────────────────────────
+
+final testEndpointsProvider =
+    FutureProvider<Map<String, EndpointTestResult>>((ref) async {
+  return ApiService.testAllEndpoints();
+});
+
 // ── Products Provider ──────────────────────────────────────────
 
 final productsProvider = FutureProvider<List<Product>>((ref) async {
@@ -105,11 +128,6 @@ class SearchQueryNotifier extends Notifier<String> {
 final searchQueryProvider = NotifierProvider<SearchQueryNotifier, String>(
   SearchQueryNotifier.new,
 );
-
-final filteredProductsProvider = FutureProvider<List<Product>>((ref) async {
-  final query = ref.watch(searchQueryProvider);
-  return ApiService.getProducts(search: query.isEmpty ? null : query);
-});
 
 // ── Categories Provider ────────────────────────────────────────
 
@@ -132,9 +150,23 @@ final selectedCategoryProvider =
   SelectedCategoryNotifier.new,
 );
 
-final categoryProductsProvider = FutureProvider<List<Product>>((ref) async {
+// ── Filtered Products Provider ────────────────────────────────
+// Fetches all products once and filters client-side by search
+// (name / sku) and selected category — mirrors the RN app behaviour.
+
+final filteredProductsProvider = FutureProvider<List<Product>>((ref) async {
+  final query = ref.watch(searchQueryProvider).trim().toLowerCase();
   final categoryId = ref.watch(selectedCategoryProvider);
-  return ApiService.getProducts(categoryId: categoryId);
+  final products = await ref.watch(productsProvider.future);
+  return products.where((p) {
+    if (categoryId != null && p.categoryId != categoryId) return false;
+    if (query.isNotEmpty &&
+        !p.name.toLowerCase().contains(query) &&
+        !p.sku.toLowerCase().contains(query)) {
+      return false;
+    }
+    return true;
+  }).toList();
 });
 
 // ── Orders Provider ────────────────────────────────────────────

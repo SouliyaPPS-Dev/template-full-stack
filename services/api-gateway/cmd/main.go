@@ -105,6 +105,8 @@ func main() {
 
 			r.With(middleware.AdminOnly).Get("/dashboard/stats", handlers.DashboardStats)
 
+			r.With(middleware.AdminOnly).Put("/settings", handlers.UpdateSettings)
+
 			r.With(middleware.AdminOnly).Post("/admin/backup", handlers.BackupDatabase)
 			r.With(middleware.AdminOnly).Get("/admin/export", handlers.ExportDatabase)
 			r.With(middleware.AdminOnly).Post("/admin/import", handlers.ImportDatabase)

@@ -20,7 +20,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { InstallButton } from "@/components/install-button";
-import { logout as apiLogout, getMe, setUser } from "@/services/api";
+import { logout as apiLogout, getMe, setUser, api } from "@/services/api";
 import { cn } from "@/lib/utils";
 import { initials } from "@/lib/format";
 
@@ -33,13 +33,28 @@ const navItems = [
   { label: "Cart", to: "/cart" as const, icon: ShoppingCart },
 ];
 
-function Brand({ onClick }: { onClick?: () => void }) {
+interface StoreSetting {
+  key: string;
+  value: string;
+}
+
+function Brand({ onClick, logoUrl, storeName }: { onClick?: () => void; logoUrl?: string; storeName?: string }) {
   return (
     <Link to="/" onClick={onClick} className="flex items-center gap-2.5 group">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-glow transition-transform group-hover:scale-105">
-        <Store className="h-5 w-5" />
+      {logoUrl ? (
+        <img
+          src={logoUrl}
+          alt={storeName || "Store"}
+          className="h-9 w-9 rounded-xl object-contain transition-transform group-hover:scale-105"
+        />
+      ) : (
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-glow transition-transform group-hover:scale-105">
+          <Store className="h-5 w-5" />
+        </span>
+      )}
+      <span className="font-display text-lg font-bold tracking-tight" data-no-translate>
+        {storeName || "Template"}
       </span>
-      <span className="font-display text-lg font-bold tracking-tight">Template</span>
     </Link>
   );
 }
@@ -60,6 +75,16 @@ function UserLayout() {
     retry: false,
   });
 
+  const { data: settings } = useQuery({
+    queryKey: ["user-settings"],
+    queryFn: () => api<StoreSetting[]>("/settings"),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  const storeName = settings?.find((s) => s.key === "store_name")?.value || "Template";
+  const storeLogo = settings?.find((s) => s.key === "store_logo")?.value || "";
+
   useEffect(() => {
     if (isError) toast.error("Session expired. Please login again.");
   }, [isError]);
@@ -78,7 +103,7 @@ function UserLayout() {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto h-16 px-4 flex items-center justify-between gap-3">
-          <Brand />
+          <Brand logoUrl={storeLogo} storeName={storeName} />
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-1">
@@ -159,7 +184,7 @@ function UserLayout() {
       {/* Mobile drawer */}
       <Sheet open={menuOpen} onClose={closeMenu} title="Menu" side="left">
         <nav className="flex flex-col gap-1">
-          <Brand onClick={closeMenu} />
+          <Brand onClick={closeMenu} logoUrl={storeLogo} storeName={storeName} />
           <Separator className="my-2" />
           {navItems.map((item) => (
             <Button
@@ -235,7 +260,7 @@ function UserLayout() {
         <div className="container mx-auto px-4 py-10 md:py-12">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="col-span-2 md:col-span-1">
-              <Brand />
+              <Brand logoUrl={storeLogo} storeName={storeName} />
               <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
                 A full-stack commerce template built with React, TanStack, Go, Rust, Python and PostgreSQL.
               </p>

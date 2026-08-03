@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/config.dart';
+import '../../../core/format.dart';
 import '../providers/cart_provider.dart';
 
 class CartScreen extends ConsumerWidget {
@@ -28,7 +28,9 @@ class CartScreen extends ConsumerWidget {
                     title: const Text('Clear Cart'),
                     content: const Text('Remove all items from cart?'),
                     actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                      TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Cancel')),
                       FilledButton(
                         onPressed: () {
                           ref.read(cartProvider.notifier).clear();
@@ -48,11 +50,15 @@ class CartScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.shopping_cart_outlined, size: 80, color: Colors.grey.shade300),
+                  Icon(Icons.shopping_cart_outlined,
+                      size: 80, color: Colors.grey.shade300),
                   const SizedBox(height: 16),
-                  const Text('Your cart is empty', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text('Your cart is empty',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text('Browse products and add items', style: TextStyle(color: Colors.grey.shade500)),
+                  Text('Browse products and add items',
+                      style: TextStyle(color: Colors.grey.shade500)),
                   const SizedBox(height: 24),
                   FilledButton.icon(
                     onPressed: () => context.go('/products'),
@@ -62,7 +68,9 @@ class CartScreen extends ConsumerWidget {
                 ],
               ),
             )
-          : isWide ? _buildWideLayout(context, ref, cart) : _buildNarrowLayout(context, ref, cart),
+          : isWide
+              ? _buildWideLayout(context, ref, cart)
+              : _buildNarrowLayout(context, ref, cart),
     );
   }
 
@@ -76,7 +84,8 @@ class CartScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildNarrowLayout(BuildContext context, WidgetRef ref, CartState cart) {
+  Widget _buildNarrowLayout(
+      BuildContext context, WidgetRef ref, CartState cart) {
     return Column(
       children: [
         Expanded(child: _buildCartList(context, ref, cart)),
@@ -107,10 +116,13 @@ class CartScreen extends ConsumerWidget {
                   : const Icon(Icons.image, color: Colors.grey),
             ),
           ),
-          title: Text(item.product.name, maxLines: 2, overflow: TextOverflow.ellipsis),
+          title: Text(item.product.name,
+              maxLines: 2, overflow: TextOverflow.ellipsis),
           subtitle: Text(
-            '$currencySymbol ${item.product.sellingPrice.toStringAsFixed(0)} each',
-            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w500),
+            '${formatMoney(item.product.sellingPrice)} each',
+            style: TextStyle(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w500),
           ),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
@@ -122,7 +134,8 @@ class CartScreen extends ConsumerWidget {
                       item.quantity - 1,
                     ),
               ),
-              Text('${item.quantity}', style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text('${item.quantity}',
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
               IconButton(
                 icon: const Icon(Icons.add_circle_outline, size: 20),
                 onPressed: () => ref.read(cartProvider.notifier).updateQuantity(
@@ -132,8 +145,11 @@ class CartScreen extends ConsumerWidget {
               ),
               if (!isCompact)
                 IconButton(
-                  icon: Icon(Icons.delete_outline, size: 20, color: Colors.red.shade400),
-                  onPressed: () => ref.read(cartProvider.notifier).removeItem(item.product.id),
+                  icon: Icon(Icons.delete_outline,
+                      size: 20, color: Colors.red.shade400),
+                  onPressed: () => ref
+                      .read(cartProvider.notifier)
+                      .removeItem(item.product.id),
                 ),
             ],
           ),
@@ -147,7 +163,12 @@ class CartScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
-        boxShadow: [BoxShadow(color: Colors.black.withAlpha(20), blurRadius: 8, offset: const Offset(0, -2))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withAlpha(20),
+              blurRadius: 8,
+              offset: const Offset(0, -2))
+        ],
       ),
       child: SafeArea(
         top: false,
@@ -158,7 +179,7 @@ class CartScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Subtotal'),
-                Text('$currencySymbol ${cart.total.toStringAsFixed(0)}'),
+                Text(formatMoney(cart.total)),
               ],
             ),
             const Divider(),

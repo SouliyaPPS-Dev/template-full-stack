@@ -103,3 +103,12 @@ type Setting struct {
 	Key   string      `json:"key"`
 	Value interface{} `json:"value"`
 }
+
+type SettingItem struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type SettingsUpdateRequest struct {
+	Settings []SettingItem `json:"settings"`
+}

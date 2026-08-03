@@ -93,24 +93,30 @@ class _MainShellState extends ConsumerState<MainShell> {
     );
   }
 
-  Widget _buildNavigationRail(BuildContext context, int cartCount, {bool extended = false}) {
+  Widget _buildNavigationRail(BuildContext context, int cartCount,
+      {bool extended = false}) {
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border(
-          right: BorderSide(color: Theme.of(context).dividerColor.withAlpha(50)),
+          right:
+              BorderSide(color: Theme.of(context).dividerColor.withAlpha(50)),
         ),
       ),
       child: NavigationRail(
         selectedIndex: _currentIndex,
         extended: extended,
-        labelType: extended ? NavigationRailLabelType.none : NavigationRailLabelType.all,
+        labelType: extended
+            ? NavigationRailLabelType.none
+            : NavigationRailLabelType.all,
         leading: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Row(
-            mainAxisAlignment: extended ? MainAxisAlignment.start : MainAxisAlignment.center,
+            mainAxisAlignment:
+                extended ? MainAxisAlignment.start : MainAxisAlignment.center,
             children: [
-              Icon(Icons.store, size: 28, color: Theme.of(context).colorScheme.primary),
+              Icon(Icons.store,
+                  size: 28, color: Theme.of(context).colorScheme.primary),
               if (extended) ...[
                 const SizedBox(width: 12),
                 Text(

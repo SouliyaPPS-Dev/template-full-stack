@@ -102,6 +102,7 @@ function HomePage() {
   }, [productsError]);
 
   const storeName = settings?.find((s) => s.key === "store_name")?.value || "Template";
+  const storeLogo = settings?.find((s) => s.key === "store_logo")?.value || "";
   const featured = products?.filter((p) => p.stock > 0).slice(0, 8) ?? [];
 
   return (
@@ -110,6 +111,13 @@ function HomePage() {
       <section className="relative">
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-primary/10 via-primary/5 to-transparent dark:from-primary/15 rounded-b-[2.5rem]" />
         <div className="text-center max-w-3xl mx-auto pt-10 md:pt-20 pb-6 md:pb-12 px-2">
+          {storeLogo && (
+            <img
+              src={storeLogo}
+              alt={storeName}
+              className="mx-auto mb-5 h-20 w-20 rounded-2xl object-contain shadow-card animate-fade-up"
+            />
+          )}
           <Badge variant="secondary" className="mb-5 px-3 py-1 text-xs gap-1.5 animate-fade-up">
             <Sparkles className="h-3 w-3" />
             Full-stack commerce template

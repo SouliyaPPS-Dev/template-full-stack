@@ -9,11 +9,16 @@ class AppTheme {
         colorSchemeSeed: _seed,
         brightness: brightness,
         appBarTheme: const AppBarTheme(centerTitle: false, elevation: 0),
-        cardTheme: CardThemeData(elevation: 1, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+        cardTheme: CardThemeData(
+            elevation: 1,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12))),
         inputDecorationTheme: InputDecorationTheme(
           border: const OutlineInputBorder(),
           filled: true,
-          fillColor: brightness == Brightness.dark ? Colors.grey.shade900 : Colors.grey.shade50,
+          fillColor: brightness == Brightness.dark
+              ? Colors.grey.shade900
+              : Colors.grey.shade50,
         ),
       );
 
@@ -24,7 +29,8 @@ class AppTheme {
     final textTheme = GoogleFonts.notoSansLaoTextTheme(theme.textTheme);
     return theme.copyWith(
       textTheme: textTheme,
-      appBarTheme: theme.appBarTheme.copyWith(titleTextStyle: textTheme.titleLarge),
+      appBarTheme:
+          theme.appBarTheme.copyWith(titleTextStyle: textTheme.titleLarge),
     );
   }
 }

@@ -77,6 +77,51 @@ export interface ImportResult {
   failed: number;
 }
 
+export interface Setting {
+  key: string;
+  value: string;
+  description?: string;
+}
+
+export async function getSettings(): Promise<Setting[]> {
+  const token = getAdminToken();
+  const res = await fetch(`${API_BASE}/settings`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    let err: { error?: string } = {};
+    if (text) try { err = JSON.parse(text); } catch {}
+    throw new Error(err.error || `Failed to load settings: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export async function updateSettings(settings: { key: string; value: string }[]): Promise<Setting[]> {
+  const token = getAdminToken();
+  const res = await fetch(`${API_BASE}/settings`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ settings }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    let err: { detail?: string; error?: string; message?: string } = {};
+    if (text) try { err = JSON.parse(text); } catch {}
+    throw new Error(err.detail || err.error || err.message || `Failed to update settings: ${res.status}`);
+  }
+
+  return res.json();
+}
+
 export async function importDatabase(file: File): Promise<ImportResult> {
   const token = getAdminToken();
   const formData = new FormData();

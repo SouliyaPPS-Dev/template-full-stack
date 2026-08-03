@@ -48,9 +48,41 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       ),
       body: Column(
         children: [
+          // Header with item count
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Products',
+                    style:
+                        TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primaryContainer
+                        .withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '${productsAsync.asData?.value.length ?? 0} items',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // Search bar
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 600),
               child: TextField(
@@ -95,8 +127,9 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                       label: Text(cat.name),
                       selected: isSelected,
                       onSelected: (selected) {
-                        ref.read(selectedCategoryProvider.notifier).set(
-                            selected ? cat.id : null);
+                        ref
+                            .read(selectedCategoryProvider.notifier)
+                            .set(selected ? cat.id : null);
                         if (selected) {
                           ref.read(searchQueryProvider.notifier).clear();
                           _searchController.clear();
@@ -136,9 +169,12 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey.shade300),
+                          Icon(Icons.inventory_2_outlined,
+                              size: 64, color: Colors.grey.shade300),
                           const SizedBox(height: 16),
-                          const Text('No products found', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                          const Text('No products found',
+                              style:
+                                  TextStyle(fontSize: 18, color: Colors.grey)),
                         ],
                       ),
                     );
@@ -147,7 +183,11 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                   return Center(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
-                        maxWidth: isWide ? 1200 : isMedium ? 800 : double.infinity,
+                        maxWidth: isWide
+                            ? 1200
+                            : isMedium
+                                ? 800
+                                : double.infinity,
                       ),
                       child: GridView.builder(
                         padding: const EdgeInsets.all(16),
@@ -162,7 +202,8 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                           final product = products[index];
                           return ProductCard(
                             product: product,
-                            onTap: () => context.push('/products/${product.id}'),
+                            onTap: () =>
+                                context.push('/products/${product.id}'),
                             onAddToCart: (p) {
                               ref.read(cartProvider.notifier).addItem(p);
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -186,7 +227,8 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                      const Icon(Icons.error_outline,
+                          size: 48, color: Colors.red),
                       const SizedBox(height: 16),
                       const Text('Failed to load products'),
                       const SizedBox(height: 16),

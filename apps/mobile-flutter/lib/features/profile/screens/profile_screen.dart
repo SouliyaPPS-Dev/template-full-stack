@@ -85,12 +85,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final width = MediaQuery.sizeOf(context).width;
     final isWide = width >= 1024;
     final isMedium = width >= 600;
-    final maxWidth = isWide ? 600.0 : isMedium ? 500.0 : width.toDouble();
+    final maxWidth = isWide
+        ? 600.0
+        : isMedium
+            ? 500.0
+            : width.toDouble();
 
     return Scaffold(
       appBar: AppBar(title: const Text('My Profile')),
       body: ListView(
-        padding: EdgeInsets.symmetric(horizontal: (width - maxWidth) / 2 > 0 ? (width - maxWidth) / 2 : 16, vertical: 16),
+        padding: EdgeInsets.symmetric(
+            horizontal:
+                (width - maxWidth) / 2 > 0 ? (width - maxWidth) / 2 : 16,
+            vertical: 16),
         children: [
           // Avatar
           Center(
@@ -109,10 +116,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           const SizedBox(height: 12),
           Center(
-            child: Text(user.fullName, style: TextStyle(fontSize: isWide ? 28 : 24, fontWeight: FontWeight.bold)),
+            child: Text(user.fullName,
+                style: TextStyle(
+                    fontSize: isWide ? 28 : 24, fontWeight: FontWeight.bold)),
           ),
           Center(
-            child: Text(user.email, style: TextStyle(color: Colors.grey.shade500)),
+            child:
+                Text(user.email, style: TextStyle(color: Colors.grey.shade500)),
           ),
           const SizedBox(height: 24),
 
@@ -123,7 +133,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Account Information', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                  const Text('Account Information',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
                   const Divider(),
                   _infoRow('Email', user.email),
                   _infoRow('Role', user.role.toUpperCase()),
@@ -132,7 +144,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     user.createdAt.isNotEmpty
                         ? (() {
                             try {
-                              return DateFormat.yMMMd().format(DateTime.parse(user.createdAt));
+                              return DateFormat.yMMMd()
+                                  .format(DateTime.parse(user.createdAt));
                             } catch (_) {
                               return '-';
                             }
@@ -154,7 +167,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Edit Profile', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                    const Text('Edit Profile',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 16)),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _fullNameController,
@@ -184,9 +199,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.check_circle, color: Colors.green.shade700, size: 20),
+                            Icon(Icons.check_circle,
+                                color: Colors.green.shade700, size: 20),
                             const SizedBox(width: 8),
-                            Text(_success!, style: TextStyle(color: Colors.green.shade700)),
+                            Text(_success!,
+                                style: TextStyle(color: Colors.green.shade700)),
                           ],
                         ),
                       ),
@@ -200,7 +217,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ? const SizedBox(
                                 height: 20,
                                 width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
                               )
                             : const Text('Save Changes'),
                       ),
@@ -216,7 +234,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Card(
             child: ListTile(
               leading: Icon(
-                themeMode == ThemeMode.dark ? Icons.dark_mode : Icons.light_mode,
+                themeMode == ThemeMode.dark
+                    ? Icons.dark_mode
+                    : Icons.light_mode,
               ),
               title: const Text('Theme'),
               subtitle: Text(
@@ -228,9 +248,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               trailing: SegmentedButton<ThemeMode>(
                 segments: const [
-                  ButtonSegment(value: ThemeMode.system, icon: Icon(Icons.brightness_auto, size: 18)),
-                  ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.light_mode, size: 18)),
-                  ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.dark_mode, size: 18)),
+                  ButtonSegment(
+                      value: ThemeMode.system,
+                      icon: Icon(Icons.brightness_auto, size: 18)),
+                  ButtonSegment(
+                      value: ThemeMode.light,
+                      icon: Icon(Icons.light_mode, size: 18)),
+                  ButtonSegment(
+                      value: ThemeMode.dark,
+                      icon: Icon(Icons.dark_mode, size: 18)),
                 ],
                 selected: {themeMode},
                 onSelectionChanged: (modes) {
@@ -266,7 +292,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: TextStyle(color: Colors.grey.shade500)),
-          Flexible(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500), textAlign: TextAlign.end)),
+          Flexible(
+              child: Text(value,
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                  textAlign: TextAlign.end)),
         ],
       ),
     );
