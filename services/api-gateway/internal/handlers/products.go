@@ -11,7 +11,35 @@ import (
 )
 
 func ListProducts(w http.ResponseWriter, r *http.Request) {
-	rows, err := database.DB.Query("SELECT id, name, slug, COALESCE(sku,''), COALESCE(category_id::text,''), selling_price, cost_price, stock, COALESCE(images,'[]')::text, is_active FROM products WHERE deleted_at IS NULL ORDER BY created_at DESC")
+	// Optional pagination: ?page=1&limit=50 (limit capped at 200). When neither
+	// is provided the full active list is returned for backward compatibility.
+	q := r.URL.Query()
+	page := 0
+	limit := 0
+	if q.Get("page") != "" || q.Get("limit") != "" {
+		page = atoiDefault(q.Get("page"), 1)
+		limit = atoiDefault(q.Get("limit"), 50)
+		if page < 1 {
+			page = 1
+		}
+		if limit < 1 {
+			limit = 50
+		}
+		if limit > 200 {
+			limit = 200
+		}
+	}
+
+	query := "SELECT id, name, slug, COALESCE(sku,''), COALESCE(category_id::text,''), selling_price, cost_price, stock, COALESCE(images,'[]')::text, is_active FROM products WHERE deleted_at IS NULL"
+	args := []interface{}{}
+	if page > 0 {
+		query += " ORDER BY created_at DESC LIMIT $1 OFFSET $2"
+		args = append(args, limit, (page-1)*limit)
+	} else {
+		query += " ORDER BY created_at DESC"
+	}
+
+	rows, err := database.DB.Query(query, args...)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "query failed")
 		return
@@ -28,6 +56,15 @@ func ListProducts(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := rows.Err(); err != nil {
 		writeError(w, http.StatusInternalServerError, "query error")
+		return
+	}
+
+	if page > 0 {
+		total, _ := database.QueryCount("SELECT COUNT(*) FROM products WHERE deleted_at IS NULL")
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"data": products,
+			"meta": map[string]interface{}{"page": page, "limit": limit, "total": total},
+		})
 		return
 	}
 

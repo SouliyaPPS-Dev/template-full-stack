@@ -1,8 +1,13 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -21,33 +26,19 @@ func main() {
 
 	loginLimiter := middleware.NewRateLimiter(10, time.Minute)
 	registerLimiter := middleware.NewRateLimiter(5, time.Minute)
+	generalLimiter := middleware.NewRateLimiter(cfg.GeneralRateLimit, cfg.RateWindow)
 	defer loginLimiter.Stop()
 	defer registerLimiter.Stop()
+	defer generalLimiter.Stop()
 
 	r := chi.NewRouter()
 
-	r.Use(chimiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(chimiddleware.RealIP)
 	r.Use(chimiddleware.RequestID)
 	r.Use(middleware.SecurityHeaders)
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			origin := r.Header.Get("Origin")
-			if origin != "" {
-				w.Header().Set("Access-Control-Allow-Origin", origin)
-				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-				w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-Auth-Type")
-				w.Header().Set("Access-Control-Allow-Credentials", "true")
-				w.Header().Set("Access-Control-Max-Age", "300")
-			}
-			if r.Method == http.MethodOptions {
-				w.WriteHeader(http.StatusNoContent)
-				return
-			}
-			next.ServeHTTP(w, r)
-		})
-	})
+	r.Use(middleware.CORS(cfg.CORSOrigins))
+	r.Use(middleware.AccessLog)
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -55,16 +46,21 @@ func main() {
 	})
 
 	r.Route("/api/v1", func(r chi.Router) {
-		// Auth - rate limited
+		r.Use(middleware.RateLimit(generalLimiter))
+
+		// Auth - stricter rate limits
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RateLimit(loginLimiter))
 			r.Post("/auth/register", handlers.Register(cfg))
 			r.Post("/auth/login", handlers.Login(cfg))
 		})
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.RateLimit(loginLimiter))
+			r.Post("/admin/login", handlers.AdminLogin(cfg))
+		})
 		r.Post("/auth/refresh", handlers.RefreshToken(cfg))
-		r.Post("/auth/logout", handlers.Logout)
-		r.Post("/admin/login", handlers.AdminLogin(cfg))
-		r.Post("/admin/logout", handlers.AdminLogout)
+		r.Post("/auth/logout", handlers.Logout(cfg))
+		r.Post("/admin/logout", handlers.AdminLogout(cfg))
 
 		// Public read-only
 		r.Get("/settings", handlers.GetSettings)
@@ -113,6 +109,31 @@ func main() {
 		})
 	})
 
+	srv := &http.Server{
+		Addr:         ":" + cfg.Port,
+		Handler:      r,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// Graceful shutdown on SIGINT/SIGTERM
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		sig := <-sigCh
+		log.Printf("Received %s, shutting down...", sig)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Printf("Graceful shutdown failed: %v", err)
+		}
+	}()
+
 	log.Printf("API Gateway running on :%s", cfg.Port)
-	log.Fatal(http.ListenAndServe(":"+cfg.Port, r))
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatal(err)
+	}
+	log.Println("API Gateway stopped cleanly")
 }

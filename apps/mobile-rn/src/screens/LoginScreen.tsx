@@ -9,10 +9,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useResponsive } from "../hooks/useResponsive";
+import { useSettings } from "../hooks/useQueries";
 import {
   Colors,
   Spacing,
@@ -28,6 +30,9 @@ interface Props {
 export default function LoginScreen({ onLogin, onRegister }: Props) {
   const navigation = useNavigation();
   const { isDesktop, isTablet } = useResponsive();
+  const settings = useSettings();
+  const storeName = settings.data?.find((s) => s.key === "store_name")?.value || "Template";
+  const storeLogo = settings.data?.find((s) => s.key === "store_logo")?.value || "";
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -64,7 +69,18 @@ export default function LoginScreen({ onLogin, onRegister }: Props) {
       <ScrollView contentContainerStyle={[styles.scroll, isDesktop && styles.scrollDesktop]} keyboardShouldPersistTaps="handled">
         <View style={[styles.form, { width: formWidth }]}>
           <View style={styles.header}>
-            <Text style={[styles.logo, isDesktop && styles.logoDesktop]}>Template</Text>
+            {storeLogo ? (
+              <Image
+                source={{ uri: storeLogo }}
+                style={[styles.logoImage, isDesktop && styles.logoImageDesktop]}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={[styles.logoFallback, isDesktop && styles.logoFallbackDesktop]}>
+                <MaterialCommunityIcons name="storefront" size={34} color={Colors.primary} />
+              </View>
+            )}
+            <Text style={[styles.logo, isDesktop && styles.logoDesktop]}>{storeName}</Text>
             <Text style={styles.subtitle}>
               {isSignUp ? "Create your account" : "Sign in to your account"}
             </Text>
@@ -158,6 +174,24 @@ const styles = StyleSheet.create({
   },
   form: { width: "100%" },
   header: { alignItems: "center", marginBottom: 32 },
+  logoImage: {
+    width: 72,
+    height: 72,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.cardBg,
+    marginBottom: Spacing.md,
+  },
+  logoImageDesktop: { width: 88, height: 88 },
+  logoFallback: {
+    width: 72,
+    height: 72,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.md,
+  },
+  logoFallbackDesktop: { width: 88, height: 88 },
   logo: {
     fontSize: FontSize.logo,
     fontWeight: Platform.OS === "android" ? "700" : "bold",

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -8,58 +8,78 @@ import {
   ActivityIndicator,
   Platform,
   Image,
+  RefreshControl,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import {
-  useHealthCheck,
-  useCategories,
-  useSettings,
-  useProducts,
-  useTestEndpoints,
-} from "../hooks/useQueries";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useCategories, useSettings, useProducts } from "../hooks/useQueries";
 import { useResponsive } from "../hooks/useResponsive";
-import { Config } from "../config";
 import { User } from "../types";
 import { Colors, Spacing, BorderRadius, FontSize } from "../theme";
 
 interface Props {
   user: User | null;
-  onLogout: () => void;
 }
 
 const categoryEmoji = ["🏠", "🍽️", "👗", "📱", "🧸", "📚", "⚡", "🛠️", "🧴", "🚗"];
 
-export default function HomeScreen({ user, onLogout }: Props) {
+export default function HomeScreen({ user }: Props) {
   const navigation = useNavigation();
-  const { data: categories, isLoading: loadingCategories } = useCategories();
-  const { data: settings, isLoading: loadingSettings } = useSettings();
-  const { data: products } = useProducts();
-  const { data: health } = useHealthCheck();
+  const categories = useCategories();
+  const settings = useSettings();
+  const products = useProducts();
   const { isDesktop, isTablet } = useResponsive();
-  const [showTests, setShowTests] = useState(false);
-  const { data: testResults, isLoading: testing, refetch: runTests } = useTestEndpoints();
+  const [refreshing, setRefreshing] = useState(false);
 
   const storeName =
-    settings?.find((s) => s.setting_key === "store_name")?.setting_value?.replace(/"/g, "") ||
-    "Template";
+    settings.data?.find((s) => s.key === "store_name")?.value || "Template";
+  const storeLogo = settings.data?.find((s) => s.key === "store_logo")?.value || "";
 
-  const featured = products?.filter((p) => p.is_featured && p.is_active).slice(0, 8) || [];
+  const featured = products.data?.filter((p) => p.is_featured && p.is_active).slice(0, 8) || [];
   const horizontalPadding = isDesktop ? 40 : isTablet ? 24 : Spacing.xl;
   const contentMaxWidth = isDesktop ? 1200 : undefined;
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        categories.refetch(),
+        settings.refetch(),
+        products.refetch(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [categories, settings, products]);
 
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={[styles.content, { paddingHorizontal: horizontalPadding }]}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />
+      }
     >
-      {/* Hero */}
       <View style={[styles.inner, contentMaxWidth ? { maxWidth: contentMaxWidth, width: "100%", alignSelf: "center" } : undefined]}>
+        {/* Hero */}
         <View style={[styles.hero, isDesktop && styles.heroDesktop]}>
+          <View style={styles.heroGlow} />
+          {storeLogo ? (
+            <Image
+              source={{ uri: storeLogo }}
+              style={[styles.heroLogo, isDesktop && styles.heroLogoDesktop]}
+              resizeMode="contain"
+            />
+          ) : (
+            <View style={[styles.heroLogo, isDesktop && styles.heroLogoDesktop]}>
+              <MaterialCommunityIcons name="storefront" size={34} color={Colors.primary} />
+            </View>
+          )}
           <View style={styles.heroBadge}>
             <Text style={styles.heroBadgeText}>🛒 Shop online</Text>
           </View>
           <Text style={[styles.heroTitle, isDesktop && styles.heroTitleDesktop]}>
-            {loadingSettings ? "Welcome!" : `Welcome to ${storeName}`}
+            {settings.isLoading ? "Welcome!" : `Welcome to ${storeName}`}
           </Text>
           <Text style={[styles.heroSubtitle, isDesktop && styles.heroSubtitleDesktop]}>
             Your one-stop shop for quality products at the best prices.
@@ -68,31 +88,38 @@ export default function HomeScreen({ user, onLogout }: Props) {
             <TouchableOpacity
               style={[styles.primaryButton, isDesktop && styles.heroButtonWide]}
               onPress={() => navigation.navigate("Products" as never)}
+              activeOpacity={0.85}
             >
               <Text style={styles.primaryButtonText}>Browse Products</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.secondaryButton, isDesktop && styles.heroButtonWide]}
               onPress={() => navigation.navigate("Orders" as never)}
+              activeOpacity={0.85}
             >
               <Text style={styles.secondaryButtonText}>My Orders</Text>
             </TouchableOpacity>
           </View>
+          {user && (
+            <View style={styles.heroUserPill}>
+              <Text style={styles.heroUserText}>Signed in as {user.full_name}</Text>
+            </View>
+          )}
         </View>
 
         {/* Categories */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Shop by Category</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("Products" as never)}>
+            <TouchableOpacity onPress={() => navigation.navigate("Products" as never)} activeOpacity={0.7}>
               <Text style={styles.seeAll}>See all</Text>
             </TouchableOpacity>
           </View>
-          {loadingCategories ? (
+          {categories.isLoading ? (
             <ActivityIndicator style={{ marginTop: 16 }} color={Colors.primary} />
-          ) : categories && categories.length > 0 ? (
+          ) : categories.data && categories.data.length > 0 ? (
             <View style={styles.categoryGrid}>
-              {categories.map((cat, i) => (
+              {categories.data.map((cat, i) => (
                 <TouchableOpacity
                   key={cat.id}
                   style={[
@@ -100,6 +127,7 @@ export default function HomeScreen({ user, onLogout }: Props) {
                     { width: isDesktop ? "18%" : isTablet ? "30%" : "45%" },
                   ]}
                   onPress={() => navigation.navigate("Products" as never)}
+                  activeOpacity={0.8}
                 >
                   <Text style={styles.categoryEmoji}>{categoryEmoji[i % categoryEmoji.length]}</Text>
                   <Text style={styles.categoryName} numberOfLines={1}>{cat.name}</Text>
@@ -115,7 +143,7 @@ export default function HomeScreen({ user, onLogout }: Props) {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Featured Products</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("Products" as never)}>
+            <TouchableOpacity onPress={() => navigation.navigate("Products" as never)} activeOpacity={0.7}>
               <Text style={styles.seeAll}>See all</Text>
             </TouchableOpacity>
           </View>
@@ -130,6 +158,7 @@ export default function HomeScreen({ user, onLogout }: Props) {
                   key={p.id}
                   style={styles.featuredCard}
                   onPress={() => navigation.navigate("Products" as never)}
+                  activeOpacity={0.85}
                 >
                   <View style={styles.featuredImage}>
                     {p.images?.[0] ? (
@@ -177,55 +206,6 @@ export default function HomeScreen({ user, onLogout }: Props) {
             </View>
           </View>
         </View>
-
-        {/* Developer tools */}
-        <View style={styles.devCard}>
-          <View style={styles.devHeader}>
-            <View>
-              <Text style={styles.devTitle}>Developer Tools</Text>
-              <Text style={styles.devSubtitle}>
-                {Config.isProd ? "PRODUCTION" : "DEVELOPMENT"} · {Config.apiUrl}
-              </Text>
-            </View>
-            <View style={[styles.statusPill, { backgroundColor: health ? "#ecfdf5" : "#fef2f2" }]}>
-              <View style={[styles.statusDot, { backgroundColor: health ? Colors.success : Colors.error }]} />
-              <Text style={[styles.statusText, { color: health ? Colors.success : Colors.error }]}>
-                {health ? "API OK" : "checking..."}
-              </Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={styles.testButton}
-            onPress={() => { setShowTests(!showTests); if (!showTests && !testResults) runTests(); }}
-          >
-            <Text style={styles.testButtonText}>
-              {showTests ? "Hide Endpoint Tests" : "Test All Endpoints"}
-            </Text>
-          </TouchableOpacity>
-          {showTests && (
-            testing ? (
-              <ActivityIndicator style={{ marginTop: 12 }} color={Colors.primary} />
-            ) : testResults ? (
-              <View style={{ marginTop: Spacing.sm }}>
-                {Object.entries(testResults).map(([name, res]: any) => (
-                  <View
-                    key={name}
-                    style={[styles.endpointRow, { backgroundColor: res.ok ? "#f0fdf4" : "#fef2f2" }]}
-                  >
-                    <Text style={styles.endpointName} numberOfLines={1}>{name}</Text>
-                    <Text style={{ color: res.ok ? Colors.success : Colors.error, fontWeight: "600" }}>
-                      {res.ok ? "PASS" : "FAIL"}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : null
-          )}
-        </View>
-
-        <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -241,6 +221,7 @@ const styles = StyleSheet.create({
     padding: Spacing.xxl,
     alignItems: "center",
     marginTop: Spacing.lg,
+    overflow: "hidden",
     shadowColor: "#4f46e5",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
@@ -248,6 +229,25 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   heroDesktop: { paddingVertical: 48, paddingHorizontal: 48 },
+  heroGlow: {
+    position: "absolute",
+    top: -80,
+    right: -80,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  heroLogo: {
+    width: 64,
+    height: 64,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.white,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.md,
+  },
+  heroLogoDesktop: { width: 76, height: 76 },
   heroBadge: {
     backgroundColor: "rgba(255, 255, 255, 0.2)",
     paddingHorizontal: Spacing.md,
@@ -286,6 +286,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   secondaryButtonText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: Platform.OS === "android" ? "600" : "600" },
+  heroUserPill: {
+    marginTop: Spacing.lg,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+  },
+  heroUserText: { color: Colors.white, fontSize: FontSize.sm, fontWeight: "500" },
   section: { marginTop: Spacing.xxl },
   sectionHeader: {
     flexDirection: "row",
@@ -350,57 +358,4 @@ const styles = StyleSheet.create({
   featureEmoji: { fontSize: 22, marginBottom: Spacing.sm },
   featureTitle: { fontSize: FontSize.lg, fontWeight: Platform.OS === "android" ? "600" : "600", marginBottom: Spacing.xs, color: Colors.text },
   featureDesc: { fontSize: FontSize.sm, color: Colors.textSecondary, lineHeight: 18 },
-  devCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    marginTop: Spacing.xxl,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-  },
-  devHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  devTitle: { fontSize: FontSize.lg, fontWeight: "700", color: Colors.text },
-  devSubtitle: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
-  statusPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-  },
-  statusDot: { width: 6, height: 6, borderRadius: 3, marginRight: 4 },
-  statusText: { fontSize: FontSize.xs, fontWeight: "600" },
-  testButton: {
-    marginTop: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    borderRadius: BorderRadius.md,
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-  testButtonText: { color: Colors.primary, fontSize: FontSize.md, fontWeight: "600" },
-  endpointRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 6,
-    paddingHorizontal: Spacing.sm,
-    borderRadius: 6,
-    marginBottom: 4,
-  },
-  endpointName: { fontSize: FontSize.sm, color: Colors.text, flex: 1, marginRight: Spacing.sm },
-  logoutButton: {
-    paddingVertical: 14,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.error,
-    alignItems: "center",
-    marginTop: Spacing.xxl,
-    backgroundColor: "#fef2f2",
-  },
-  logoutText: { color: Colors.error, fontSize: FontSize.lg, fontWeight: Platform.OS === "android" ? "600" : "600" },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
+  RefreshControl,
+  TouchableOpacity,
 } from "react-native";
 import { useProducts } from "../hooks/useQueries";
 import { useResponsive } from "../hooks/useResponsive";
@@ -13,8 +15,9 @@ import ProductCard from "../components/ProductCard";
 import { Colors, Spacing, BorderRadius, FontSize, Fonts } from "../theme";
 
 export default function ProductsScreen() {
-  const { data: products, isLoading, error } = useProducts();
+  const { data: products, isLoading, error, refetch } = useProducts();
   const [search, setSearch] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
   const { isDesktop, isTablet, columns, width } = useResponsive();
 
   const filtered = products?.filter(
@@ -25,6 +28,15 @@ export default function ProductsScreen() {
 
   const horizontalPadding = isDesktop ? 40 : isTablet ? 24 : Spacing.lg;
   const gridColumns = isDesktop ? columns : isTablet ? 2 : 1;
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
 
   if (isLoading) {
     return (
@@ -42,6 +54,9 @@ export default function ProductsScreen() {
         </View>
         <Text style={styles.errorText}>Failed to load products</Text>
         <Text style={styles.errorHint}>Check your connection and try again.</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()} activeOpacity={0.85}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -62,6 +77,8 @@ export default function ProductsScreen() {
           placeholderTextColor={Colors.placeholder}
           value={search}
           onChangeText={setSearch}
+          selectionColor={Colors.primary}
+          clearButtonMode="while-editing"
         />
       </View>
 
@@ -72,6 +89,9 @@ export default function ProductsScreen() {
         numColumns={gridColumns}
         key={`grid-${gridColumns}`}
         columnWrapperStyle={gridColumns > 1 ? styles.row : undefined}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />
+        }
         renderItem={({ item }) => (
           <ProductCard product={item} />
         )}
@@ -140,6 +160,14 @@ const styles = StyleSheet.create({
   errorIconText: { color: Colors.white, fontSize: 28, fontFamily: Fonts.bold },
   errorText: { color: Colors.error, fontSize: FontSize.lg, fontFamily: Fonts.semibold },
   errorHint: { color: Colors.textMuted, fontSize: FontSize.sm, marginTop: 4 },
+  retryButton: {
+    marginTop: Spacing.lg,
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.xxl,
+    borderRadius: BorderRadius.md,
+  },
+  retryButtonText: { color: Colors.white, fontSize: FontSize.lg, fontFamily: Fonts.semibold },
   empty: { alignItems: "center", paddingTop: 60 },
   emptyEmoji: { fontSize: 40, marginBottom: Spacing.sm },
   emptyText: { color: Colors.textMuted, textAlign: "center", fontSize: FontSize.lg },

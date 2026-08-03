@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -31,7 +32,20 @@ func validateEmail(email string) bool {
 }
 
 func validatePassword(pw string) bool {
-	return len(pw) >= 8 && len(pw) <= 128
+	if len(pw) < 8 || len(pw) > 128 {
+		return false
+	}
+	hasLetter := false
+	hasDigit := false
+	for _, c := range pw {
+		switch {
+		case (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'):
+			hasLetter = true
+		case c >= '0' && c <= '9':
+			hasDigit = true
+		}
+	}
+	return hasLetter && hasDigit
 }
 
 func sanitizeString(s string) string {
@@ -40,4 +54,15 @@ func sanitizeString(s string) string {
 		s = s[:500]
 	}
 	return s
+}
+
+func atoiDefault(s string, def int) int {
+	if s == "" {
+		return def
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return def
+	}
+	return n
 }

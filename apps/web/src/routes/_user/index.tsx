@@ -82,7 +82,8 @@ function HomePage() {
   const { data: settings, isError: settingsError } = useQuery({
     queryKey: ["user-settings"],
     queryFn: () => api<Setting[]>("/settings"),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: products, isError: productsError } = useQuery({

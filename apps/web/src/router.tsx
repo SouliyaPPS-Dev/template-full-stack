@@ -18,6 +18,8 @@ export function getRouter() {
     routeTree,
     basepath: import.meta.env.BASE_URL.replace(/\/$/, ""),
     defaultPreload: "intent",
+    defaultPreloadDelay: 100,
+    defaultPendingMs: 250,
     scrollRestoration: true,
     defaultNotFoundComponent: NotFound,
   });

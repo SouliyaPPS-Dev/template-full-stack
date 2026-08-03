@@ -1,6 +1,20 @@
 const API_BASE = import.meta.env.VITE_API_URL || "/api/v1";
 const IS_PRODUCTION = import.meta.env.MODE === "production" || API_BASE.includes("hf.space");
 
+// Abort long-running requests so a stalled backend never hangs the UI.
+const DEFAULT_TIMEOUT_MS = 15_000;
+const STREAM_TIMEOUT_MS = 120_000;
+
+async function fetchWithTimeout(url: string, options?: RequestInit, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 export function getApiBase(): string {
   return API_BASE;
 }
@@ -109,7 +123,7 @@ async function _doRefresh(userType: UserType): Promise<string | null> {
     try {
       const saved = loadAuthFromStorage(userType);
       if (!saved?.token) return null;
-      const res = await fetch(`${API_BASE}/auth/refresh`, {
+      const res = await fetchWithTimeout(`${API_BASE}/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${saved.token}` },
       });
@@ -128,7 +142,7 @@ async function _doRefresh(userType: UserType): Promise<string | null> {
 
 // ── Gradio 5.x API caller (for HF Spaces production) ──
 async function gradioPredict<T>(apiName: string, data: unknown[] = []): Promise<T> {
-  const res = await fetch(`${API_BASE}/_call/${apiName}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/_call/${apiName}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ data }),
@@ -141,8 +155,8 @@ async function gradioPredict<T>(apiName: string, data: unknown[] = []): Promise<
 
   const { event_id } = await res.json();
 
-  // Poll for result via SSE
-  const dataRes = await fetch(`${API_BASE}/_call/${apiName}/${event_id}`);
+  // Poll for result via SSE (streaming, allow a longer timeout)
+  const dataRes = await fetchWithTimeout(`${API_BASE}/_call/${apiName}/${event_id}`, undefined, STREAM_TIMEOUT_MS);
   if (!dataRes.ok) {
     throw new Error(`Gradio data fetch failed: ${dataRes.status}`);
   }
@@ -201,7 +215,7 @@ export async function api<T>(path: string, options?: RequestInit, _userType: Use
   const saved = isClient() ? loadAuthFromStorage(_userType) : null;
   if (saved?.token) headers["Authorization"] = `Bearer ${saved.token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const res = await fetchWithTimeout(`${API_BASE}${path}`, { ...options, headers });
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -216,7 +230,7 @@ export async function api<T>(path: string, options?: RequestInit, _userType: Use
       const newToken = await _doRefresh(_userType);
       if (newToken) {
         headers["Authorization"] = `Bearer ${newToken}`;
-        const retryRes = await fetch(`${API_BASE}${path}`, { ...options, headers });
+        const retryRes = await fetchWithTimeout(`${API_BASE}${path}`, { ...options, headers });
         if (retryRes.ok) {
           const retryText = await retryRes.text();
           if (!retryText.startsWith("<!")) return JSON.parse(retryText) as T;
@@ -262,7 +276,7 @@ async function gradioApiCaller<T>(path: string, options?: RequestInit, _userType
   const saved = isClient() ? loadAuthFromStorage(_userType) : null;
   if (saved?.token) headers["Authorization"] = `Bearer ${saved.token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const res = await fetchWithTimeout(`${API_BASE}${path}`, { ...options, headers });
 
   // Handle login response: save token + user to localStorage
   if ((path === "/auth/login" || path === "/admin/login") && method === "POST" && res.ok) {
@@ -311,7 +325,7 @@ async function gradioApiCaller<T>(path: string, options?: RequestInit, _userType
       const newToken = await _doRefresh(_userType);
       if (newToken) {
         headers["Authorization"] = `Bearer ${newToken}`;
-        const retryRes = await fetch(`${API_BASE}${path}`, { ...options, headers });
+        const retryRes = await fetchWithTimeout(`${API_BASE}${path}`, { ...options, headers });
         if (retryRes.ok) return retryRes.json() as Promise<T>;
       }
       clearAuthFromStorage(_userType);

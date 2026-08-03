@@ -47,11 +47,14 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 }
 
 func GenerateJWT(cfg *config.Config, userID, role string) (string, error) {
+	now := time.Now()
 	claims := jwt.MapClaims{
 		"sub":  userID,
 		"role": role,
-		"exp":  time.Now().Add(cfg.JWTExpiry).Unix(),
-		"iat":  time.Now().Unix(),
+		"iss":  config.JWTIssuer,
+		"aud":  config.JWTAudience,
+		"exp":  now.Add(cfg.JWTExpiry).Unix(),
+		"iat":  now.Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(cfg.JWTSecret)
@@ -154,6 +157,12 @@ func validateJWT(cfg *config.Config, tokenStr string) (jwt.MapClaims, error) {
 		return nil, err
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		if iss, ok := claims["iss"].(string); !ok || iss != config.JWTIssuer {
+			return nil, fmt.Errorf("invalid issuer")
+		}
+		if aud, ok := claims["aud"].(string); !ok || aud != config.JWTAudience {
+			return nil, fmt.Errorf("invalid audience")
+		}
 		return claims, nil
 	}
 	return nil, fmt.Errorf("invalid token")

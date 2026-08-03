@@ -62,7 +62,7 @@ export interface Order {
 
 export interface Setting {
   id: number;
-  setting_key: string;
-  setting_value: string;
+  key: string;
+  value: string;
   description: string;
 }

@@ -22,11 +22,11 @@ func setAuthCookie(w http.ResponseWriter, cfg *config.Config, token string) {
 		MaxAge:   int(cfg.JWTExpiry.Seconds()),
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		Secure:   false,
+		Secure:   cfg.CookieSecure,
 	})
 }
 
-func clearAuthCookie(w http.ResponseWriter) {
+func clearAuthCookie(w http.ResponseWriter, cfg *config.Config) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "auth_token",
 		Value:    "",
@@ -34,7 +34,7 @@ func clearAuthCookie(w http.ResponseWriter) {
 		MaxAge:   -1,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		Secure:   false,
+		Secure:   cfg.CookieSecure,
 	})
 }
 
@@ -55,7 +55,7 @@ func Register(cfg *config.Config) http.HandlerFunc {
 			return
 		}
 		if !validatePassword(req.Password) {
-			writeError(w, http.StatusBadRequest, "password must be 8-128 characters")
+			writeError(w, http.StatusBadRequest, "password must be 8-128 characters and contain letters and numbers")
 			return
 		}
 		if req.FullName == "" {
@@ -164,9 +164,11 @@ func Login(cfg *config.Config) http.HandlerFunc {
 	}
 }
 
-func Logout(w http.ResponseWriter, r *http.Request) {
-	clearAuthCookie(w)
-	writeJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
+func Logout(cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		clearAuthCookie(w, cfg)
+		writeJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
+	}
 }
 
 func Me(w http.ResponseWriter, r *http.Request) {
@@ -274,7 +276,7 @@ func AdminLogin(cfg *config.Config) http.HandlerFunc {
 			MaxAge:   int(cfg.JWTExpiry.Seconds()),
 			HttpOnly: true,
 			SameSite: http.SameSiteLaxMode,
-			Secure:   false,
+			Secure:   cfg.CookieSecure,
 		})
 
 		writeJSON(w, http.StatusOK, models.AuthResponse{
@@ -335,15 +337,17 @@ func RefreshToken(cfg *config.Config) http.HandlerFunc {
 	}
 }
 
-func AdminLogout(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     "admin_token",
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1,
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-		Secure:   false,
-	})
-	writeJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
+func AdminLogout(cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "admin_token",
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+			Secure:   cfg.CookieSecure,
+		})
+		writeJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
+	}
 }

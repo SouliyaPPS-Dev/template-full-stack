@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Smartphone, Download, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { patchCurrentManifest } from "@/lib/store-logo";
 
 interface InstallButtonProps {
   admin?: boolean;
@@ -63,7 +64,10 @@ export function InstallButton({ admin, className, variant = "outline", size = "s
     if (deferredPrompt) {
       if (admin) {
         const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
-        if (link) link.href = "/manifest-admin.json";
+        if (link) {
+          link.href = "/manifest-admin.json";
+          await patchCurrentManifest();
+        }
       }
       deferredPrompt.prompt();
       await deferredPrompt.userChoice;

@@ -1,5 +1,6 @@
 import { Link, useLocation, Outlet, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   Package,
@@ -24,6 +25,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { cn } from "@/lib/utils";
 import { adminLogout } from "@/services/api";
+import { getSettings } from "@/services/admin";
+import { applyStoreLogo } from "@/lib/store-logo";
 import { useAuth } from "@/hooks/use-auth";
 import { initials } from "@/lib/format";
 
@@ -41,15 +44,22 @@ function isActive(pathname: string, path: string) {
 }
 
 function Brand({ compact = false }: { compact?: boolean }) {
+  const { data: settings } = useQuery({ queryKey: ["admin-settings"], queryFn: getSettings });
+  const logo = (settings?.find((s) => s.key === "store_logo")?.value as string) || "";
+  const name = (settings?.find((s) => s.key === "store_name")?.value as string) || "Template";
   return (
     <div className="flex items-center gap-2.5">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-glow">
-        <Store className="h-5 w-5" />
-      </span>
+      {logo ? (
+        <img src={logo} alt={name} className="h-9 w-9 shrink-0 rounded-xl object-contain bg-white" />
+      ) : (
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-glow">
+          <Store className="h-5 w-5" />
+        </span>
+      )}
       {!compact && (
         <div className="leading-tight">
           <p className="font-display font-bold tracking-tight">Admin Panel</p>
-          <p className="text-[11px] text-muted-foreground">Template</p>
+          <p className="text-[11px] text-muted-foreground" data-no-translate>{name}</p>
         </div>
       )}
     </div>
@@ -101,6 +111,13 @@ export function AdminLayout() {
   const user = useAuth("admin");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+
+  const { data: adminSettings } = useQuery({ queryKey: ["admin-settings"], queryFn: getSettings });
+  const adminLogo = (adminSettings?.find((s) => s.key === "store_logo")?.value as string) || "";
+
+  useEffect(() => {
+    applyStoreLogo(adminLogo);
+  }, [adminLogo]);
 
   function handleLogout() {
     adminLogout();

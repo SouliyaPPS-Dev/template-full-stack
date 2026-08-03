@@ -23,6 +23,7 @@ import { InstallButton } from "@/components/install-button";
 import { logout as apiLogout, getMe, setUser, api } from "@/services/api";
 import { cn } from "@/lib/utils";
 import { initials } from "@/lib/format";
+import { applyStoreLogo } from "@/lib/store-logo";
 
 export const Route = createFileRoute("/_user")({
   component: UserLayout,
@@ -78,12 +79,17 @@ function UserLayout() {
   const { data: settings } = useQuery({
     queryKey: ["user-settings"],
     queryFn: () => api<StoreSetting[]>("/settings"),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: true,
     retry: false,
   });
 
   const storeName = settings?.find((s) => s.key === "store_name")?.value || "Template";
   const storeLogo = settings?.find((s) => s.key === "store_logo")?.value || "";
+
+  useEffect(() => {
+    applyStoreLogo(storeLogo);
+  }, [storeLogo]);
 
   useEffect(() => {
     if (isError) toast.error("Session expired. Please login again.");
@@ -302,7 +308,12 @@ function UserLayout() {
           </div>
           <div className="mt-10 pt-6 border-t flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
             <p>© {new Date().getFullYear()} Template. All rights reserved.</p>
-            <p>Web · API · Mobile — one codebase, every screen.</p>
+            <div className="flex items-center gap-4">
+              <Link to="/privacy" className="hover:text-primary transition-colors">
+                Privacy Policy
+              </Link>
+              <span>Web · API · Mobile — one codebase, every screen.</span>
+            </div>
           </div>
         </div>
       </footer>

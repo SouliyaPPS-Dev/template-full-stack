@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Platform,
+  RefreshControl,
+  TouchableOpacity,
 } from "react-native";
 import { useOrders } from "../hooks/useQueries";
 import { useResponsive } from "../hooks/useResponsive";
@@ -15,6 +17,7 @@ import {
   Spacing,
   BorderRadius,
   FontSize,
+  Fonts,
 } from "../theme";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -26,6 +29,10 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "#ef4444",
   refunded: "#6b7280",
 };
+
+function formatMoney(value: number): string {
+  return `₭${Math.round(value).toLocaleString()}`;
+}
 
 function OrderCard({ order }: { order: Order }) {
   const { isDesktop } = useResponsive();
@@ -43,7 +50,7 @@ function OrderCard({ order }: { order: Order }) {
       </View>
       <View style={styles.orderRow}>
         <Text style={styles.label}>Total</Text>
-        <Text style={styles.value}>${order.grand_total.toFixed(2)}</Text>
+        <Text style={styles.value}>{formatMoney(order.grand_total)}</Text>
       </View>
       <View style={styles.orderRow}>
         <Text style={styles.label}>Payment</Text>
@@ -62,7 +69,7 @@ function OrderCard({ order }: { order: Order }) {
           <Text style={styles.itemsTitle}>Items ({order.items.length})</Text>
           {order.items.map((item) => (
             <Text key={item.id} style={styles.itemText}>
-              {item.quantity}x {item.product_name} - ${item.subtotal.toFixed(2)}
+              {item.quantity}x {item.product_name} - {formatMoney(item.subtotal)}
             </Text>
           ))}
         </View>
@@ -72,8 +79,18 @@ function OrderCard({ order }: { order: Order }) {
 }
 
 export default function OrdersScreen() {
-  const { data: orders, isLoading, error } = useOrders();
+  const { data: orders, isLoading, error, refetch } = useOrders();
   const { isDesktop } = useResponsive();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
 
   if (isLoading) {
     return (
@@ -87,6 +104,9 @@ export default function OrdersScreen() {
     return (
       <View style={styles.center}>
         <Text style={styles.errorText}>Failed to load orders</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()} activeOpacity={0.85}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -103,9 +123,16 @@ export default function OrdersScreen() {
         data={orders}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.list, { paddingHorizontal: horizontalPad }]}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />
+        }
         renderItem={({ item }) => <OrderCard order={item} />}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>No orders yet</Text>
+          <View style={styles.empty}>
+            <Text style={styles.emptyEmoji}>📦</Text>
+            <Text style={styles.emptyText}>No orders yet</Text>
+            <Text style={styles.emptyHint}>Orders you place will appear here.</Text>
+          </View>
         }
       />
     </View>
@@ -193,5 +220,16 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   errorText: { color: Colors.error, fontSize: 16 },
-  emptyText: { color: Colors.textMuted, textAlign: "center", marginTop: 40, fontSize: 16 },
+  retryButton: {
+    marginTop: Spacing.lg,
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.xxl,
+    borderRadius: BorderRadius.md,
+  },
+  retryButtonText: { color: Colors.white, fontSize: FontSize.lg, fontFamily: Fonts.semibold },
+  empty: { alignItems: "center", marginTop: 60 },
+  emptyEmoji: { fontSize: 44, marginBottom: Spacing.md },
+  emptyText: { color: Colors.textMuted, textAlign: "center", fontSize: 16 },
+  emptyHint: { color: Colors.textSecondary, textAlign: "center", fontSize: FontSize.sm, marginTop: 4 },
 });

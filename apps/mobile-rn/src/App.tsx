@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback } from "react";
 import {
   ActivityIndicator,
   View,
+  Text,
+  Image,
   StyleSheet,
 } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -11,7 +13,7 @@ import {
 } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
 import {
@@ -30,32 +32,32 @@ import {
   onSessionExpired,
 } from "./services/api";
 import { User } from "./types";
+import ErrorBoundary from "./components/ErrorBoundary";
 import LoginScreen from "./screens/LoginScreen";
 import HomeScreen from "./screens/HomeScreen";
 import ProductsScreen from "./screens/ProductsScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import CartScreen from "./screens/CartScreen";
 import OrdersScreen from "./screens/OrdersScreen";
+import { useSettings } from "./hooks/useQueries";
 import { Colors, Fonts } from "./theme";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
-const queryClient = new QueryClient();
 
-if (typeof console !== "undefined") {
-  const origWarn = console.warn;
-  console.warn = (...args: any[]) => {
-    const msg = typeof args[0] === "string" ? args[0] : "";
-    if (msg.includes("pointerEvents")) return;
-    origWarn(...args);
-  };
-  const origError = console.error;
-  console.error = (...args: any[]) => {
-    const msg = typeof args[0] === "string" ? args[0] : "";
-    if (msg.includes("aria-hidden")) return;
-    origError(...args);
-  };
-}
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30_000,
+      gcTime: 10 * 60 * 1000,
+      refetchOnReconnect: false,
+    },
+    mutations: {
+      retry: 0,
+    },
+  },
+});
 
 type RootParamList = {
   Login: undefined;
@@ -76,6 +78,23 @@ function tabIcon(name: keyof typeof Feather.glyphMap) {
   );
 }
 
+function StoreHeader({ logoUrl, storeName }: { logoUrl?: string; storeName?: string }) {
+  return (
+    <View style={styles.brandRow}>
+      {logoUrl ? (
+        <Image source={{ uri: logoUrl }} style={styles.brandLogo} resizeMode="contain" />
+      ) : (
+        <View style={styles.brandLogoFallback}>
+          <MaterialCommunityIcons name="storefront" size={20} color={Colors.white} />
+        </View>
+      )}
+      <Text style={styles.brandTitle} numberOfLines={1}>
+        {storeName || "Template"}
+      </Text>
+    </View>
+  );
+}
+
 function MainTabs({
   user,
   onLogout,
@@ -85,6 +104,11 @@ function MainTabs({
   onLogout: () => void;
   onUserUpdate: (user: User) => void;
 }) {
+  const settings = useSettings();
+  const storeName =
+    settings.data?.find((s) => s.key === "store_name")?.value || "Template";
+  const storeLogo = settings.data?.find((s) => s.key === "store_logo")?.value || "";
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -107,38 +131,59 @@ function MainTabs({
       <Tab.Screen
         name="Home"
         options={{
-          title: "Template",
+          title: storeName,
           tabBarLabel: "Home",
           tabBarIcon: tabIcon("home"),
+          headerTitleAlign: "left",
+          headerTitle: () => <StoreHeader logoUrl={storeLogo} storeName={storeName} />,
         }}
       >
-        {() => <HomeScreen user={user} onLogout={onLogout} />}
+        {() => (
+          <ErrorBoundary>
+            <HomeScreen user={user} />
+          </ErrorBoundary>
+        )}
       </Tab.Screen>
       <Tab.Screen
         name="Products"
-        component={ProductsScreen}
         options={{
           title: "Products",
           tabBarIcon: tabIcon("shopping-bag"),
         }}
-      />
+      >
+        {() => (
+          <ErrorBoundary>
+            <ProductsScreen />
+          </ErrorBoundary>
+        )}
+      </Tab.Screen>
       <Tab.Screen
         name="Cart"
-        component={CartScreen}
         options={{
           title: "Cart",
           tabBarIcon: tabIcon("shopping-cart"),
         }}
-      />
+      >
+        {() => (
+          <ErrorBoundary>
+            <CartScreen />
+          </ErrorBoundary>
+        )}
+      </Tab.Screen>
       <Tab.Screen
         name="Orders"
-        component={OrdersScreen}
         options={{
           title: "My Orders",
           tabBarLabel: "Orders",
           tabBarIcon: tabIcon("package"),
         }}
-      />
+      >
+        {() => (
+          <ErrorBoundary>
+            <OrdersScreen />
+          </ErrorBoundary>
+        )}
+      </Tab.Screen>
       <Tab.Screen
         name="Account"
         options={{
@@ -148,7 +193,9 @@ function MainTabs({
         }}
       >
         {() => (
-          <ProfileScreen user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />
+          <ErrorBoundary>
+            <ProfileScreen user={user} onLogout={onLogout} onUserUpdate={onUserUpdate} />
+          </ErrorBoundary>
         )}
       </Tab.Screen>
     </Tab.Navigator>
@@ -246,24 +293,26 @@ function RootNavigator() {
 
   return (
     <NavigationContainer ref={navRef}>
-      <Stack.Navigator
-        initialRouteName={user ? "Main" : "Login"}
-        screenOptions={{ headerShown: false }}
-      >
-        <Stack.Screen name="Login">
-          {() => (
-            <LoginScreen
-              onLogin={login}
-              onRegister={register}
-            />
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="Main">
-          {() => (
-            <MainTabs user={user} onLogout={logout} onUserUpdate={handleUserUpdate} />
-          )}
-        </Stack.Screen>
-      </Stack.Navigator>
+      <ErrorBoundary>
+        <Stack.Navigator
+          initialRouteName={user ? "Main" : "Login"}
+          screenOptions={{ headerShown: false }}
+        >
+          <Stack.Screen name="Login">
+            {() => (
+              <LoginScreen
+                onLogin={login}
+                onRegister={register}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Main">
+            {() => (
+              <MainTabs user={user} onLogout={logout} onUserUpdate={handleUserUpdate} />
+            )}
+          </Stack.Screen>
+        </Stack.Navigator>
+      </ErrorBoundary>
     </NavigationContainer>
   );
 }
@@ -299,5 +348,31 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: Colors.background,
+  },
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexShrink: 1,
+  },
+  brandLogo: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: Colors.white,
+  },
+  brandLogoFallback: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  brandTitle: {
+    color: Colors.white,
+    fontFamily: Fonts.bold,
+    fontSize: 18,
+    flexShrink: 1,
   },
 });

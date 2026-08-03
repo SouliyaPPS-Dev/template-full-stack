@@ -214,34 +214,6 @@ export async function getStoredUser(): Promise<User | null> {
   }
 }
 
-export async function testAllEndpoints(): Promise<Record<string, { ok: boolean; status?: number; error?: string }>> {
-  const results: Record<string, any> = {};
-
-  const test = async (label: string, fn: () => Promise<any>) => {
-    try {
-      const res = await fn();
-      results[label] = { ok: true, data: res };
-    } catch (err: any) {
-      results[label] = { ok: false, error: err.message };
-    }
-  };
-
-  await test("GET /health", () => fetch(`${API_BASE}/health`).then(r => r.ok ? r.json() : Promise.reject(new Error(`${r.status}`))));
-  await test("GET /products", () => api<any[]>("/products"));
-  await test("GET /categories", () => api<any[]>("/categories"));
-  await test("GET /settings", () => api<any[]>("/settings"));
-  await test("POST /auth/login (wrong pw)", () =>
-    api("/auth/login", { method: "POST", body: JSON.stringify({ email: "x@x.com", password: "wrong" }) }).catch(e => e));
-
-  const token = await getToken();
-  if (token) {
-    await test("GET /auth/me", () => api<any>("/auth/me"));
-    await test("GET /orders", () => api<any[]>("/orders"));
-  }
-
-  return results;
-}
-
 export async function isAuthenticated(): Promise<boolean> {
   const token = await getToken();
   if (!token) return false;

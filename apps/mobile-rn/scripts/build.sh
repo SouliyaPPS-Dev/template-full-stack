@@ -42,12 +42,25 @@ prebuild() {
   fi
 }
 
+# ─── Generate launcher icons from store logo setting ──────
+generate_icons() {
+  if [ "${NO_SETTINGS_ICON:-}" = "1" ]; then
+    warn "Skipping icon generation (NO_SETTINGS_ICON=1)"
+    return
+  fi
+  if [ "${APP_ENV:-}" = "production" ] || [ "${ICON_FROM_SETTINGS:-}" = "1" ]; then
+    log "Generating Android icons from store logo setting..."
+    python3 "$MOBILE_DIR/scripts/generate_icon.py" 2>&1 || warn "Icon generation failed; using existing icons"
+  fi
+}
+
 # ─── Android APK ──────────────────────────────────────────
 build_apk() {
   export ANDROID_HOME="$ANDROID_SDK"
   export JAVA_HOME
 
   prebuild android "${1:-}"
+  generate_icons
 
   log "Building APK (assembleRelease)..."
   cd "$MOBILE_DIR/android"
@@ -70,6 +83,7 @@ build_aab() {
   export JAVA_HOME
 
   prebuild android "${1:-}"
+  generate_icons
 
   log "Building App Bundle (bundleRelease)..."
   cd "$MOBILE_DIR/android"
@@ -174,6 +188,7 @@ build_android_all() {
   export JAVA_HOME
 
   prebuild android "${1:-}"
+  generate_icons
 
   log "Building APK + AAB in parallel..."
   cd "$MOBILE_DIR/android"
