@@ -128,8 +128,14 @@ case "$1" in
         cd "$DIR/apps/mobile-rn" && APP_ENV=production npx expo start
         ;;
       apk)
-        echo -e "${G}Building Android APK (local)...${NC}"
-        cd "$DIR/apps/mobile-rn" && bash scripts/build.sh apk
+        if [ "${3:-}" = "prod" ]; then
+          echo -e "${G}Building Android APK (PRODUCTION)...${NC}"
+          echo -e "${G}API: https://souliya-template.hf.space/api/v1${NC}"
+          cd "$DIR/apps/mobile-rn" && APP_ENV=production bash scripts/build.sh apk
+        else
+          echo -e "${G}Building Android APK (local/dev API)...${NC}"
+          cd "$DIR/apps/mobile-rn" && bash scripts/build.sh apk
+        fi
         ;;
       aab|appbundle)
         echo -e "${G}Building Android App Bundle (local)...${NC}"
@@ -200,7 +206,8 @@ case "$1" in
   echo "  ./run web build    Build web for production + sync dist/"
   echo "  ./run web deploy   Build, sync dist, upload seeds, push to HF Space"
     echo "  ./run mobile-rn    API + React Native (Expo Go)"
-    echo "  ./run mobile-rn apk         Build Android APK (local)"
+    echo "  ./run mobile-rn apk         Build Android APK (local/dev API)"
+  echo "  ./run mobile-rn apk prod    Build Android APK (PRODUCTION API)"
     echo "  ./run mobile-rn aab         Build Android App Bundle (local)"
     echo "  ./run mobile-rn ios         Build iOS .app (simulator, no signing)"
     echo "  ./run mobile-rn ipa         Build iOS IPA (device, requires signing)"

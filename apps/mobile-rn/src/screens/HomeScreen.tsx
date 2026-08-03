@@ -52,7 +52,8 @@ export default function HomeScreen({ user, onLogout }: Props) {
       style={styles.container}
       contentContainerStyle={[styles.content, { paddingHorizontal: horizontalPadding }]}
     >
-      <View style={[styles.inner, contentMaxWidth ? { maxWidth: contentMaxWidth, width: "100%", alignSelf: "center" } : undefined]}>        {/* Hero */}
+      {/* Hero */}
+      <View style={[styles.inner, contentMaxWidth ? { maxWidth: contentMaxWidth, width: "100%", alignSelf: "center" } : undefined]}>
         <View style={[styles.hero, isDesktop && styles.heroDesktop]}>
           <View style={styles.heroBadge}>
             <Text style={styles.heroBadgeText}>🛒 Shop online</Text>
