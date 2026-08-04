@@ -1,4 +1,4 @@
-package com.template.app
+package com.souliyapps.templatefullstack
 
 import android.os.Build
 import android.os.Bundle

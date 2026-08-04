@@ -138,16 +138,28 @@ case "$1" in
         fi
         ;;
       aab|appbundle)
-        echo -e "${G}Building Android App Bundle (local)...${NC}"
-        cd "$DIR/apps/mobile-rn" && bash scripts/build.sh aab
+        if [ "${3:-}" = "prod" ]; then
+          echo -e "${G}Building Android App Bundle (PRODUCTION)...${NC}"
+          echo -e "${G}API: https://souliya-template.hf.space/api/v1${NC}"
+          cd "$DIR/apps/mobile-rn" && APP_ENV=production bash scripts/build.sh aab
+        else
+          echo -e "${G}Building Android App Bundle (local)...${NC}"
+          cd "$DIR/apps/mobile-rn" && bash scripts/build.sh aab
+        fi
         ;;
       ios)
         echo -e "${G}Building iOS .app for simulator (local, no signing)...${NC}"
         cd "$DIR/apps/mobile-rn" && bash scripts/build.sh ios
         ;;
       ipa)
-        echo -e "${G}Building iOS IPA (local, requires signing)...${NC}"
-        cd "$DIR/apps/mobile-rn" && bash scripts/build.sh ipa
+        if [ "${3:-}" = "prod" ]; then
+          echo -e "${G}Building iOS IPA (PRODUCTION, requires signing)...${NC}"
+          echo -e "${G}API: https://souliya-template.hf.space/api/v1${NC}"
+          cd "$DIR/apps/mobile-rn" && APP_ENV=production bash scripts/build.sh ipa
+        else
+          echo -e "${G}Building iOS IPA (local, requires signing)...${NC}"
+          cd "$DIR/apps/mobile-rn" && bash scripts/build.sh ipa
+        fi
         ;;
       build)
         echo -e "${G}Building all platforms (local)...${NC}"

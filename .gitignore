@@ -12,6 +12,8 @@ tmp/
 **/tmp/main
 *.air
 apps/mobile-rn/builds/
+apps/mobile-rn/android/app/release.keystore
+apps/mobile-rn/android/keystore.properties
 services/api-gateway/bin/
 *.DS_Store
 *.apk

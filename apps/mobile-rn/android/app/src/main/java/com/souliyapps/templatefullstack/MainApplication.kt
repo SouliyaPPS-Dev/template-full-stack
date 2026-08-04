@@ -1,4 +1,4 @@
-package com.template.app
+package com.souliyapps.templatefullstack
 
 import android.app.Application
 import android.content.res.Configuration

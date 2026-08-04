@@ -6,8 +6,9 @@ MOBILE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD_DIR="$MOBILE_DIR/builds"
 ANDROID_SDK="$HOME/Library/Android/sdk"
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
-APP_NAME="Template"
-TEAM_ID="5RWGN8BU5Y"
+APP_NAME="Template Full Stack"
+IOS_NAME="${APP_NAME// /}"  # TemplateFullStack (no spaces for Xcode references)
+TEAM_ID="6WXU3G8J84"
 
 # Colors
 G='\033[0;32m'; Y='\033[1;33m'; R='\033[0;31m'; B='\033[0;34m'; NC='\033[0m'
@@ -105,7 +106,7 @@ build_ios() {
   fix_path
   prebuild ios "${1:-}"
 
-  local WORKSPACE="$MOBILE_DIR/ios/${APP_NAME}.xcworkspace"
+  local WORKSPACE="$MOBILE_DIR/ios/${IOS_NAME}.xcworkspace"
 
   if [ ! -d "$WORKSPACE" ]; then
     log "Installing CocoaPods..."
@@ -116,15 +117,15 @@ build_ios() {
   log "Building iOS Release (.app for simulator)..."
   cd "$MOBILE_DIR/ios"
   xcodebuild \
-    -workspace "${APP_NAME}.xcworkspace" \
-    -scheme "$APP_NAME" \
+    -workspace "${IOS_NAME}.xcworkspace" \
+    -scheme "$IOS_NAME" \
     -configuration Release \
     -sdk iphonesimulator \
     -derivedDataPath build \
     CODE_SIGNING_ALLOWED=NO \
     -quiet 2>&1
 
-  local ARTIFACT="$MOBILE_DIR/ios/build/Build/Products/Release-iphonesimulator/${APP_NAME}.app"
+  local ARTIFACT="$MOBILE_DIR/ios/build/Build/Products/Release-iphonesimulator/${IOS_NAME}.app"
   if [ ! -d "$ARTIFACT" ]; then
     err ".app not found at $ARTIFACT — build may have failed."
   fi
@@ -140,7 +141,7 @@ build_ipa() {
   fix_path
   prebuild ios "${1:-}"
 
-  local WORKSPACE="$MOBILE_DIR/ios/${APP_NAME}.xcworkspace"
+  local WORKSPACE="$MOBILE_DIR/ios/${IOS_NAME}.xcworkspace"
 
   if [ ! -d "$WORKSPACE" ]; then
     log "Installing CocoaPods..."
@@ -154,10 +155,10 @@ build_ipa() {
 
   # Archive
   xcodebuild \
-    -workspace "${APP_NAME}.xcworkspace" \
-    -scheme "$APP_NAME" \
+    -workspace "${IOS_NAME}.xcworkspace" \
+    -scheme "$IOS_NAME" \
     -configuration Release \
-    -archivePath "$BUILD_DIR/${APP_NAME}.xcarchive" \
+    -archivePath "$BUILD_DIR/${IOS_NAME}.xcarchive" \
     -destination "generic/platform=iOS" \
     -allowProvisioningUpdates \
     DEVELOPMENT_TEAM="$TEAM_ID" \
@@ -166,7 +167,7 @@ build_ipa() {
   # Export IPA
   xcodebuild \
     -exportArchive \
-    -archivePath "$BUILD_DIR/${APP_NAME}.xcarchive" \
+    -archivePath "$BUILD_DIR/${IOS_NAME}.xcarchive" \
     -exportOptionsPlist "$MOBILE_DIR/scripts/ExportOptions.plist" \
     -exportPath "$BUILD_DIR" \
     -allowProvisioningUpdates 2>&1

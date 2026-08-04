@@ -10,7 +10,7 @@ module.exports = ({ config }) => {
       ...config.extra,
       ...(apiUrl ? { apiUrl } : {}),
       appEnv,
-      appName: process.env.APP_NAME || config.extra?.appName || "Template",
+      appName: process.env.APP_NAME || config.extra?.appName || "Template Full Stack",
     },
   };
 };
