@@ -1,0 +1,3 @@
+Import translations with AI
+
+Save time by using AI to add translations instead of manually creating and adding a new translation for every language.
